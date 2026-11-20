@@ -36,7 +36,7 @@ The hosted macOS job has successfully compiled this app. For Linux device instal
 bash scripts/install-ios.sh
 ```
 
-The helper refreshes the compiled `.app`'s public Firebase JSON asset before `xtool install` signs and installs it over USB. Compilation still happens on the hosted Mac; Apple credentials and signing keys are not uploaded. The existing account uses free provisioning, which produces a signed identifier with an `XTL-TEAMID.` prefix. A separate development Firebase iOS app now matches the observed signed identifier. The first installation succeeded and the user confirmed the dashboard opens after trusting their development certificate in Settings. Its later Firebase-configured update is pending recovery from the host's USB configuration error. The helper leaves any certificate-revocation decision interactive. Mac/Xcode development signing or TestFlight remain alternatives for distribution.
+The helper refreshes the compiled `.app`'s public Firebase JSON asset before `xtool install` signs and installs it over USB. Compilation still happens on the hosted Mac; Apple credentials and signing keys are not uploaded. The existing account uses free provisioning, which produces a signed identifier with an `XTL-TEAMID.` prefix. A separate development Firebase iOS app now matches the observed signed identifier. The first installation succeeded and the user confirmed the dashboard opens after trusting their development certificate in Settings. The Firebase-configured update installed successfully and real iPhone plan creation was verified. The subsequent AI capacity fix is built as v0.2.1 and awaits final on-phone verification. The helper leaves any certificate-revocation decision interactive. Mac/Xcode development signing or TestFlight remain alternatives for distribution.
 
 ## Existing Firebase project
 
@@ -73,6 +73,8 @@ This test passed for Android anonymous Auth, a valid App Check token and server-
 ## AI consent and storage
 
 Flutter uses explicit cloud consent for optional note drafting and shortlist explanations. Manual editing never calls a model. Raw notes remain in the editor, are cleared after drafting/review/disposal, and never enter local plan storage or Firestore. After consent they are transmitted to Google through Firebase AI Logic; this is not on-device inference. Provider data handling is governed by the configured service.
+
+The primary `cloud_model` defaults to `gemini-3.8-flash`. Temporary capacity/quota failures and timeouts can use the supported `cloud_fallback_model`, defaulting to `gemini-3.5-flash-lite`. Each attempt has a 45-second deadline and closes its HTTP client; there is at most one fallback. Verification, API configuration and region failures do not switch models. Product errors distinguish these cases from connectivity, and receipts identify the model that actually answered. Both requests stay within the same explicitly approved Google/Firebase operation.
 
 Approved cards, local rooms and feedback defaults use Flutter SharedPreferences under `meet.flutter.*`. They do not automatically import the previous HTML localStorage or native preferences. Existing Firestore live rooms use the same backend, but anonymous identities are platform-installation specific; rejoin with an invitation when necessary.
 

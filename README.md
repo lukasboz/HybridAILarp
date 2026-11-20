@@ -34,7 +34,7 @@ The web build is packaged in `dist/`, retaining the existing Firebase Hosting ta
 - Deterministic hard-limit filtering and ranking that prioritizes the least-satisfied person.
 - Host-provided activity options, rejected-option explanations, revision-bound voting and unanimous confirmation.
 - Firebase anonymous Auth, live Firestore rooms and invitations, App Check, Remote Config, and Firebase AI Logic adapters.
-- Explicitly approved cloud note-to-card drafting and optional cloud shortlist explanations. Raw notes are not saved by the app.
+- Explicitly approved cloud note-to-card drafting and optional cloud shortlist explanations. Temporary model failures use a supported fallback; receipts identify the model used. Raw notes are not saved by the app.
 - Calendar `.ics` sharing, invitation sharing/copying and local feedback for future preferences.
 - Contract tests against the original shared planner fixtures, consent tests and phone/desktop visual baselines.
 
@@ -52,7 +52,7 @@ App Check’s production web key excludes localhost. Live AI on localhost needs 
 
 Flutter’s native iOS compilation requires **macOS and Xcode**, supplied here by GitHub’s hosted Mac runner. The [hosted workflow](https://github.com/lukasboz/HybridAILarp/actions/runs/44657697039) passed web verification, Android compilation and the arm64 iOS development build.
 
-[The CI workflow](.github/workflows/flutter.yml) produces an unsigned development artifact. Download it and unpack its tarball to `artifacts/ios/`, then connect and unlock a paired iPhone and run `bash scripts/install-ios.sh`. The helper refreshes its public Firebase data asset, and `xtool` signs the app locally before installing; Apple credentials stay off the hosted runner. Installation succeeded and the user confirmed that the dashboard opens after trusting their development certificate. The subsequent Firebase-configured update is pending recovery from a Linux USB configuration error. The development artifact uses App Check’s debug provider, whose device token needs private registration for protected services.
+[The CI workflow](.github/workflows/flutter.yml) produces an unsigned development artifact. Download it and unpack its tarball to `artifacts/ios/`, then connect and unlock a paired iPhone and run `bash scripts/install-ios.sh`. The helper refreshes its public Firebase data asset, and `xtool` signs the app locally before installing; Apple credentials stay off the hosted runner. Installation succeeded and the user confirmed that the dashboard opens after trusting their development certificate. The Firebase-configured update was installed and real iPhone plan creation verified. The latest v0.2.1 AI capacity fix is built and awaits its final on-phone check. The development artifact uses App Check’s debug provider, whose device token needs private registration for protected services.
 
 ## Repository layout
 
