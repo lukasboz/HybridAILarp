@@ -33,9 +33,10 @@ The web build is packaged in `dist/`, retaining the existing Firebase Hosting ta
 - Local plans, sample perspectives, manual preference editing and review before sharing.
 - Deterministic hard-limit filtering and ranking that prioritizes the least-satisfied person.
 - Host-provided activity options, rejected-option explanations, revision-bound voting and unanimous confirmation.
-- Firebase anonymous Auth, live Firestore rooms and invitations, App Check, Remote Config, and Firebase AI Logic adapters.
+- Firebase anonymous Auth, live Firestore rooms and invitations (renewed by the host before they expire), App Check, Remote Config, and Firebase AI Logic adapters.
+- Plan details with an illustrative travel map, access and setting labels, and a plain notice whenever the group decision reopens.
 - Explicitly approved cloud note-to-card drafting and optional cloud shortlist explanations. Temporary model failures use a supported fallback; receipts identify the model used. Raw notes are not saved by the app.
-- Calendar `.ics` sharing, invitation sharing/copying and local feedback for future preferences.
+- Calendar `.ics` sharing, plan and invitation sharing/copying, and local feedback for future preferences.
 - Contract tests against the original shared planner fixtures, consent tests and phone/desktop visual baselines.
 
 The twelve Toronto activities are **sample data**, not live discovery. Their photos, prices, hours, access and travel are illustrative or estimated. Learned account profiles, a friends graph, live event/venue search and multi-stop itineraries remain separate product work.

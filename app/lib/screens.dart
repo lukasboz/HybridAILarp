@@ -325,15 +325,19 @@ class RoomScreen extends StatefulWidget {
 class _RoomScreenState extends State<RoomScreen> {
   bool rejected = false;
   Future<void> shareInvite() async {
-    final room = widget.store.room!;
+    final store = widget.store, room = store.room!;
     if (room.local) return;
-    final url = Uri.parse(widget.store.cloud.publicUrl)
-        .replace(queryParameters: {'invite': room.inviteId})
-        .toString();
+    String? url;
+    final ready = await perform(
+      context,
+      store,
+      () async => url = await store.invitationLink(),
+    );
+    if (!ready || url == null || !mounted) return;
     // Clipboard always provides a fallback when a desktop/browser has no share target.
-    await Clipboard.setData(ClipboardData(text: url));
+    await Clipboard.setData(ClipboardData(text: url!));
     if (!mounted) return;
-    await perform(context, widget.store, () async {
+    await perform(context, store, () async {
       await SharePlus.instance.share(
         ShareParams(
           title: room.title,
@@ -356,6 +360,7 @@ class _RoomScreenState extends State<RoomScreen> {
         ranked = store.ranked,
         selected = store.chosen;
     final activities = store.planner.catalogFor(room);
+    final full = room.members.length >= store.cloud.maxGroupSize;
     return LayoutBuilder(
       builder: (context, box) {
         final wide = box.maxWidth >= 1040;
@@ -464,9 +469,9 @@ class _RoomScreenState extends State<RoomScreen> {
                     ),
                   if (!room.local)
                     FilledButton.icon(
-                      onPressed: shareInvite,
+                      onPressed: full ? null : shareInvite,
                       icon: const Icon(Icons.link_rounded, size: 16),
-                      label: const Text('Invite people'),
+                      label: Text(full ? 'This plan is full' : 'Invite people'),
                     ),
                   if (room.local)
                     TextButton.icon(
@@ -560,6 +565,36 @@ class _RoomScreenState extends State<RoomScreen> {
               if (room.proposal != null) ...[
                 const SizedBox(height: 22),
                 VotingPanel(store: store),
+              ] else if (store.reopenedNotice != null) ...[
+                const SizedBox(height: 22),
+                Semantics(
+                  liveRegion: true,
+                  child: GlassSurface(
+                    radius: 12,
+                    color: MH.accentSoft.withValues(alpha: .35),
+                    padding: const EdgeInsets.all(13),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.refresh_rounded,
+                          size: 16,
+                          color: MH.accent,
+                        ),
+                        const SizedBox(width: 9),
+                        Expanded(
+                          child: Text(
+                            store.reopenedNotice!,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: MH.secondary,
+                              height: 1.6,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
               const SizedBox(height: 24),
               Wrap(
@@ -816,6 +851,29 @@ class VotingPanel extends StatelessWidget {
     });
   }
 
+  Future<void> sharePlan(BuildContext context, Activity idea) async {
+    final room = store.room!;
+    final text = [
+      '${room.title}: ${idea.name}',
+      '${readableDate(room.date)} · ${timeLabel(room.proposal!.startMinute)} Toronto time',
+      '${idea.venue}, ${idea.area}',
+      idea.cost == 0 ? 'Free' : 'About \$${idea.cost} per person',
+      'Check current hours and booking before you go.',
+    ].join('\n');
+    // Clipboard always provides a fallback when a desktop/browser has no share target.
+    await Clipboard.setData(ClipboardData(text: text));
+    if (!context.mounted) return;
+    await perform(context, store, () async {
+      await SharePlus.instance.share(
+        ShareParams(
+          title: room.title,
+          text: text,
+          sharePositionOrigin: const Rect.fromLTWH(20, 80, 200, 50),
+        ),
+      );
+    }, message: 'Plan details copied.');
+  }
+
   @override
   Widget build(BuildContext context) {
     final room = store.room!,
@@ -845,7 +903,8 @@ class VotingPanel extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            '${readableDate(room.date)} · ${timeLabel(proposal.startMinute)} · ${idea.venue}',
+            '${readableDate(room.date)} · ${timeLabel(proposal.startMinute)} Toronto time\n'
+            '${idea.venue} · ${idea.cost == 0 ? 'Free' : '~\$${idea.cost} per person'}',
             style: const TextStyle(
               fontSize: 12,
               color: MH.secondary,
@@ -854,10 +913,26 @@ class VotingPanel extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           if (room.status == 'confirmed') ...[
-            FilledButton.icon(
-              onPressed: () => calendar(context),
-              icon: const Icon(Icons.event_available_rounded, size: 17),
-              label: const Text('Add to calendar'),
+            const Text(
+              'Everyone agreed, but nothing is booked yet. Check current hours and prices, and reserve ahead if the venue needs it.',
+              style: TextStyle(fontSize: 11, color: MH.secondary, height: 1.6),
+            ),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilledButton.icon(
+                  onPressed: () => calendar(context),
+                  icon: const Icon(Icons.event_available_rounded, size: 17),
+                  label: const Text('Add to calendar'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => sharePlan(context, idea),
+                  icon: const Icon(Icons.share_outlined, size: 16),
+                  label: const Text('Share the plan'),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             const Text(

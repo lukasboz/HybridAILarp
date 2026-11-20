@@ -135,6 +135,12 @@ class FirebaseService {
   String fallbackModelName = 'gemini-3.5-flash-lite';
   bool explanationsEnabled = true;
   bool connected = false;
+  // Firestore rules independently cap a room at eight members.
+  int maxGroupSize = 8;
+  // Rules cap expiry at server time + 7 days; an hour of headroom tolerates a fast device clock.
+  static const inviteLifetime = Duration(days: 6, hours: 23);
+  static const _inviteUnavailable =
+      'This invitation has expired or isn’t valid. Ask someone in the plan for a new link.';
   FirebaseApp get firebaseApp => _app ?? Firebase.app(appName);
   FirebaseAuth get auth => FirebaseAuth.instanceFor(app: firebaseApp);
   String get uid => auth.currentUser!.uid;
@@ -223,7 +229,9 @@ class FirebaseService {
             : const AppleAppAttestProvider(),
       );
     }
-    if (auth.currentUser == null) {
+    // Web restores a saved session asynchronously; wait for it so a relaunch
+    // keeps the same guest identity instead of creating a new one.
+    if ((auth.currentUser ?? await auth.authStateChanges().first) == null) {
       await auth.signInAnonymously();
     }
     modelName = config['cloudModel'] as String? ?? modelName;
@@ -256,6 +264,7 @@ class FirebaseService {
     modelName = rc.getString('cloud_model');
     fallbackModelName = rc.getString('cloud_fallback_model');
     explanationsEnabled = rc.getBool('cloud_explanations_enabled');
+    maxGroupSize = rc.getInt('max_group_size').clamp(2, 8);
     connected = true;
   }
 
@@ -284,9 +293,7 @@ class FirebaseService {
       'roomId': id,
       'title': title,
       'createdBy': uid,
-      'expiresAt': Timestamp.fromDate(
-        DateTime.now().add(const Duration(days: 7)),
-      ),
+      'expiresAt': Timestamp.fromDate(DateTime.now().add(inviteLifetime)),
     });
     await batch.commit();
     return id;
@@ -297,12 +304,18 @@ class FirebaseService {
       throw const FormatException('Paste a valid invitation link or code.');
     }
     await connect();
-    final invite = await db.doc('invites/$token').get();
-    if (!invite.exists) throw StateError('This invitation is unavailable.');
-    final data = invite.data()!, id = data['roomId'] as String;
-    if ((data['expiresAt'] as Timestamp).toDate().isBefore(DateTime.now())) {
-      throw StateError('This invitation has expired.');
+    final Json? data;
+    try {
+      data = (await db.doc('invites/$token').get()).data();
+    } on FirebaseException catch (error) {
+      // Rules deny reads of expired or unknown invitations, using server time.
+      if (error.code == 'permission-denied') {
+        throw StateError(_inviteUnavailable);
+      }
+      rethrow;
     }
+    if (data == null) throw StateError(_inviteUnavailable);
+    final id = data['roomId'] as String;
     try {
       if ((await db.doc('rooms/$id/members/$uid').get()).exists) return id;
     } on FirebaseException catch (_) {
@@ -322,8 +335,54 @@ class FirebaseService {
       'status': 'gathering',
       'revision': FieldValue.increment(1),
     });
-    await batch.commit();
+    try {
+      await batch.commit();
+    } on FirebaseException catch (error) {
+      if (error.code == 'permission-denied') {
+        throw StateError(
+          'This plan couldn’t take another person. It may already have eight people, or its invitation may have just expired.',
+        );
+      }
+      rethrow;
+    }
     return id;
+  }
+
+  /// Returns an invitation that stays valid for at least a day, renewing it
+  /// when the host shares a link that is about to expire.
+  Future<String> invitationFor(PlanRoom room) async {
+    await connect();
+    final token = room.inviteId;
+    if (token == null) {
+      throw StateError('This plan is still loading. Try again in a moment.');
+    }
+    DateTime? expires;
+    try {
+      final invite = await db.doc('invites/$token').get();
+      expires = (invite.data()?['expiresAt'] as Timestamp?)?.toDate();
+    } on FirebaseException catch (error) {
+      // Expired invitations can no longer be read.
+      if (error.code != 'permission-denied') rethrow;
+    }
+    final fresh =
+        expires != null &&
+        expires.isAfter(DateTime.now().add(const Duration(days: 1)));
+    if (fresh || (expires != null && room.ownerId != uid)) return token;
+    if (room.ownerId != uid) {
+      throw StateError(
+        'This invitation has expired. Ask the host to share a new link.',
+      );
+    }
+    final renewed = randomId(24), batch = db.batch();
+    batch.update(db.doc('rooms/${room.id}'), {'lastJoinInviteId': renewed});
+    batch.set(db.doc('invites/$renewed'), {
+      'roomId': room.id,
+      'title': room.title,
+      'createdBy': uid,
+      'expiresAt': Timestamp.fromDate(DateTime.now().add(inviteLifetime)),
+    });
+    await batch.commit();
+    return renewed;
   }
 
   Stream<PlanRoom> watchRoom(String id) async* {
@@ -605,10 +664,11 @@ class FirebaseService {
     final payload = {
       'city': 'Toronto',
       'date': room.date,
-      'members': room.members
-          .where((m) => m.card != null)
-          .map((m) => {'id': m.id, 'card': m.card!.toJson()})
-          .toList(),
+      // Neutral labels: the model needs approved cards, not account identifiers.
+      'members': [
+        for (final (i, m) in room.members.where((m) => m.card != null).indexed)
+          {'id': 'person-${i + 1}', 'card': m.card!.toJson()},
+      ],
       'candidates': top
           .map(
             (p) => {

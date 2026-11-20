@@ -166,4 +166,36 @@ void main() {
     expect(explanations.single.id, plans.first.candidate.id);
     expect(receipt.model, 'gemini-3.5-flash-lite');
   });
+
+  test(
+    'shortlist explanations send cards without member identifiers',
+    () async {
+      final room = PlanRoom(
+        id: 'test',
+        title: 'A test',
+        date: '2026-11-21',
+        ownerId: 'alex',
+        members: data.samplePeople,
+      );
+      final plans = Planner(data).rank(room.members);
+      late String sent;
+      final cloud = TestCloud((model, prompt) async {
+        sent = prompt;
+        return jsonEncode({
+          'explanations': [
+            {
+              'id': plans.first.candidate.id,
+              'reason': 'Fits the approved cards.',
+              'tradeoff': 'Travel is estimated.',
+            },
+          ],
+        });
+      });
+      await cloud.explain(room, plans);
+      for (final person in room.members) {
+        expect(sent, isNot(contains('"${person.id}"')));
+      }
+      expect(sent, contains('"person-1"'));
+    },
+  );
 }

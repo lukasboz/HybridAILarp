@@ -93,6 +93,22 @@ rules('confirmation needs current unanimous acceptance and cannot be performed b
   await assertFails(updateDoc(doc(db('friend'),'rooms',roomId),{status:'confirmed'}));
   await assertSucceeds(updateDoc(doc(db('host'),'rooms',roomId),{status:'confirmed'}));
   await assertFails(vote('friend',revision,'no'));
+  await assertFails(propose());
+});
+rules('only the host can renew an invitation, and only for the same room',async()=>{
+  await create();await join('friend');
+  const renewed='d'.repeat(48);
+  async function renew(as,room=roomId){
+    const store=db(as),batch=writeBatch(store);
+    batch.update(doc(store,'rooms',roomId),{lastJoinInviteId:renewed});
+    batch.set(doc(store,'invites',renewed),{roomId:room,title:'Saturday, sorted.',createdBy:as,expiresAt:Timestamp.fromMillis(Date.now()+6*86400000)});
+    return batch.commit();
+  }
+  await assertFails(renew('friend'));
+  await assertFails(renew('host','c'.repeat(36)));
+  await assertFails(updateDoc(doc(db('host'),'rooms',roomId),{lastJoinInviteId:'e'.repeat(48)}));
+  await assertSucceeds(renew('host'));
+  await assertSucceeds(join('newcomer',renewed));
 });
 rules('all eight participants can accept within Firestore access-call limits',async()=>{
   await create();for(let i=1;i<8;i++)await join(`friend${i}`);

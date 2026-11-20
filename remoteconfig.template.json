@@ -1,7 +1,8 @@
 {
   "parameters": {
     "cloud_model":{"defaultValue":{"value":"gemini-3.8-flash"},"description":"Explicit, supported Firebase AI Logic cloud model.","valueType":"STRING"},
+    "cloud_fallback_model":{"defaultValue":{"value":"gemini-3.5-flash-lite"},"description":"Used once when the primary model is temporarily overloaded, over quota or times out.","valueType":"STRING"},
     "cloud_explanations_enabled":{"defaultValue":{"value":"true"},"description":"Can disable cloud explanations while keeping rule-based planning available.","valueType":"BOOLEAN"},
-    "max_group_size":{"defaultValue":{"value":"8"},"description":"UI capacity. The Firestore rules independently enforce a maximum of 8.","valueType":"NUMBER"}
+    "max_group_size":{"defaultValue":{"value":"8"},"description":"UI capacity (2 to 8). The Firestore rules independently enforce a maximum of 8.","valueType":"NUMBER"}
   }
 }

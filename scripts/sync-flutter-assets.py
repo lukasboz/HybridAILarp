@@ -18,7 +18,8 @@ for name, value in tokens['colors'].items():
 for name, value in tokens['sizes'].items():
     dart += f"  static const double {name} = {value};\n"
 dart += '}\n'
-(ROOT / 'app/lib/design_tokens.dart').write_text(dart)
+# Keep LF endings so Windows runs don't rewrite the tracked file.
+(ROOT / 'app/lib/design_tokens.dart').write_text(dart, encoding='utf-8', newline='\n')
 
 config = {'web': {}, 'android': {}, 'ios': {}, 'appCheckSiteKey': '',
           'cloudModel': 'gemini-3.8-flash',

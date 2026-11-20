@@ -63,7 +63,7 @@ class MeetStore extends ChangeNotifier {
   String tab = 'discover', persona = 'alex', selected = '';
   bool busy = false;
   StreamSubscription<PlanRoom>? _subscription;
-  String? streamError;
+  String? streamError, reopenedNotice;
   void setBusy(bool value) {
     busy = value;
     notifyListeners();
@@ -92,6 +92,7 @@ class MeetStore extends ChangeNotifier {
     tab = value;
     room = null;
     streamError = null;
+    reopenedNotice = null;
     _subscription?.cancel();
     _subscription = null;
     explanations = [];
@@ -106,6 +107,7 @@ class MeetStore extends ChangeNotifier {
     room = value;
     tab = 'plans';
     streamError = null;
+    reopenedNotice = null;
     explanations = [];
     selected = '';
     if (!value.local) {
@@ -114,7 +116,19 @@ class MeetStore extends ChangeNotifier {
           .watchRoom(value.id)
           .listen(
             (fresh) {
-              if (room?.id != fresh.id) return;
+              final previous = room;
+              if (previous?.id != fresh.id) return;
+              if (previous!.proposal != null && fresh.proposal == null) {
+                reopenedNotice = _reopened(
+                  fresh.members.length > previous.members.length
+                      ? 'Someone joined'
+                      : fresh.options.length != previous.options.length
+                      ? 'A new idea was added'
+                      : 'Someone updated their preferences',
+                );
+              } else if (fresh.proposal != null) {
+                reopenedNotice = null;
+              }
               room = fresh;
               streamError = null;
               if (explanationRevision != fresh.revision) explanations = [];
@@ -164,10 +178,15 @@ class MeetStore extends ChangeNotifier {
     if (parsed == null || isoDate(parsed) != date) {
       throw const FormatException('Choose a valid date.');
     }
+    final now = DateTime.now();
+    if (parsed.isBefore(DateTime(now.year, now.month, now.day))) {
+      throw const FormatException('Choose today or a later date.');
+    }
     name = displayName;
     await preferences.setString('meet.flutter.name', name);
     if (live) {
       final id = await cloud.createRoom(title, date, name);
+      await preferences.setBool('meet.flutter.live', true);
       await refreshLive();
       await openRoom(liveRooms.firstWhere((r) => r.id == id));
     } else {
@@ -194,15 +213,38 @@ class MeetStore extends ChangeNotifier {
     final id = await cloud.join(token, displayName);
     name = displayName;
     await preferences.setString('meet.flutter.name', name);
+    await preferences.setBool('meet.flutter.live', true);
     await refreshLive();
     await openRoom(liveRooms.firstWhere((r) => r.id == id));
   }
 
   Future<void> refreshLive() async {
+    // Fetch before clearing so overlapping refreshes can't duplicate plans.
+    final fresh = await cloud.rooms();
     liveRooms
       ..clear()
-      ..addAll(await cloud.rooms());
+      ..addAll(fresh);
     notifyListeners();
+  }
+
+  /// Reloads live plans after a relaunch, without creating a guest identity
+  /// for someone who has never used a live plan on this device.
+  Future<void> restoreLive() async {
+    if (!cloud.configured || preferences.getBool('meet.flutter.live') != true) {
+      return;
+    }
+    try {
+      await refreshLive();
+    } catch (_) {
+      /* Offline launches keep local plans; Refresh live plans can retry. */
+    }
+  }
+
+  Future<String> invitationLink() async {
+    final token = await cloud.invitationFor(room!);
+    return Uri.parse(cloud.publicUrl)
+        .replace(queryParameters: {'invite': token})
+        .toString();
   }
 
   Future<void> shareCard(PreferenceCard card) async {
@@ -215,7 +257,7 @@ class MeetStore extends ChangeNotifier {
           throw StateError('Join this plan before sharing preferences.');
         }
         person.card = card;
-        current.reset();
+        _reset(current, '${person.name} updated their preferences');
         explanations = [];
         await persist();
       } else {
@@ -227,9 +269,14 @@ class MeetStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  void _reset(PlanRoom current, String reason) {
+    if (current.proposal != null) reopenedNotice = _reopened(reason);
+    current.reset();
+  }
+
   Future<void> addSamplePerson() async {
     final current = room!;
-    if (!current.local || current.members.length >= 8) {
+    if (!current.local || current.members.length >= cloud.maxGroupSize) {
       throw StateError(
         'Sample participants are available only in local plans with space.',
       );
@@ -243,7 +290,7 @@ class MeetStore extends ChangeNotifier {
       );
     }
     current.members.add(Person.fromJson(seed.toJson()));
-    current.reset();
+    _reset(current, '${seed.name} joined');
     await persist();
     notifyListeners();
   }
@@ -261,7 +308,7 @@ class MeetStore extends ChangeNotifier {
         (i) => 'option-${(i + 1).toString().padLeft(2, '0')}',
       ).firstWhere((id) => !current.options.any((o) => o['id'] == id));
       current.options.add({'id': id, ...option});
-      current.reset();
+      _reset(current, 'A new idea was added');
       explanations = [];
       await persist();
       notifyListeners();
@@ -273,6 +320,9 @@ class MeetStore extends ChangeNotifier {
   Future<void> propose(RankedPlan rank) async {
     final current = room!;
     if (!isHost) throw StateError('Only the host can propose a plan.');
+    if (current.status == 'confirmed') {
+      throw StateError('This plan is already confirmed.');
+    }
     final fresh = ranked
         .where((p) => p.candidate.id == rank.candidate.id)
         .firstOrNull;
@@ -290,6 +340,7 @@ class MeetStore extends ChangeNotifier {
       );
       current.votes = {};
       current.status = 'voting';
+      reopenedNotice = null;
       await persist();
       notifyListeners();
     } else {
@@ -374,6 +425,8 @@ class MeetStore extends ChangeNotifier {
   }
 
   Future<void> resetLocal() async {
+    // Shared live plans survive a local reset, so keep reloading them.
+    final live = preferences.getBool('meet.flutter.live') ?? false;
     for (final key
         in preferences
             .getKeys()
@@ -389,7 +442,9 @@ class MeetStore extends ChangeNotifier {
     tab = 'discover';
     receipts.clear();
     explanations = [];
+    reopenedNotice = null;
     await preferences.setString('meet.flutter.identity', identity);
+    if (live) await preferences.setBool('meet.flutter.live', true);
     await persist();
     notifyListeners();
   }
@@ -407,6 +462,9 @@ class MeetStore extends ChangeNotifier {
     super.dispose();
   }
 }
+
+String _reopened(String reason) =>
+    '$reason, so the decision reopened. Earlier votes no longer count.';
 
 String friendlyError(Object error) {
   if (error is CloudAIException) return error.message;

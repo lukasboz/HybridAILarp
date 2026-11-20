@@ -89,6 +89,12 @@ void main() {
     final calendar = calendarFile(room, idea);
     expect(calendar, contains('DTEND;TZID=America/Toronto:20261102T000000'));
     expect(calendar, contains(r'SUMMARY:Games\; friends\, together'));
+    for (final line in calendar.split('\r\n')) {
+      expect(utf8.encode(line).length, lessThanOrEqualTo(75));
+    }
+    final unfolded = calendar.replaceAll('\r\n ', '');
+    expect(unfolded, contains('Estimated cost: '));
+    expect(unfolded, contains('Nothing is booked'));
   });
   test(
     'host activities replace samples and must still pass hard constraints',

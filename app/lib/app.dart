@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
 
+import 'browser_url.dart';
 import 'design.dart';
 import 'dialogs.dart';
 import 'screens.dart';
@@ -38,9 +41,11 @@ class _MeetShellState extends State<MeetShell> {
   @override
   void initState() {
     super.initState();
+    unawaited(widget.store.restoreLive());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final invitation = Uri.base.queryParameters['invite'];
       if (invitation != null && mounted) {
+        forgetInvitationInAddressBar();
         showJoinPlan(context, widget.store, invitation: invitation);
       }
       if (widget.store.loadNotice != null && mounted) {
@@ -58,49 +63,58 @@ class _MeetShellState extends State<MeetShell> {
       return LayoutBuilder(
         builder: (context, box) {
           final desktop = box.maxWidth >= 760;
-          return Scaffold(
-            body: SafeArea(
-              child: Row(
-                children: [
-                  if (desktop) _sidebar(),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        _header(desktop),
-                        if (store.busy)
-                          const SizedBox(
-                            height: 2,
-                            child: LinearProgressIndicator(
-                              color: MH.accent,
-                              backgroundColor: MH.accentSoft,
-                            ),
-                          )
-                        else
-                          const SizedBox(height: 2),
-                        Expanded(
-                          child: store.room != null
-                              ? RoomScreen(
-                                  key: ValueKey(store.room!.id),
-                                  store: store,
-                                )
-                              : switch (store.tab) {
-                                  'plans' => PlansScreen(store: store),
-                                  'preferences' => PreferencesScreen(
+          // System Back leaves a plan, then returns to Discover, before exiting.
+          return PopScope(
+            canPop: store.room == null && store.tab == 'discover',
+            onPopInvokedWithResult: (didPop, _) {
+              if (!didPop) {
+                store.navigate(store.room != null ? 'plans' : 'discover');
+              }
+            },
+            child: Scaffold(
+              body: SafeArea(
+                child: Row(
+                  children: [
+                    if (desktop) _sidebar(),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          _header(desktop),
+                          if (store.busy)
+                            const SizedBox(
+                              height: 2,
+                              child: LinearProgressIndicator(
+                                color: MH.accent,
+                                backgroundColor: MH.accentSoft,
+                              ),
+                            )
+                          else
+                            const SizedBox(height: 2),
+                          Expanded(
+                            child: store.room != null
+                                ? RoomScreen(
+                                    key: ValueKey(store.room!.id),
                                     store: store,
-                                  ),
-                                  'privacy' => PrivacyScreen(store: store),
-                                  _ => DiscoverScreen(store: store),
-                                },
-                        ),
-                        if (!desktop)
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(15, 6, 15, 9),
-                            child: _bottomBar(),
+                                  )
+                                : switch (store.tab) {
+                                    'plans' => PlansScreen(store: store),
+                                    'preferences' => PreferencesScreen(
+                                      store: store,
+                                    ),
+                                    'privacy' => PrivacyScreen(store: store),
+                                    _ => DiscoverScreen(store: store),
+                                  },
                           ),
-                      ],
+                          if (!desktop)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(15, 6, 15, 9),
+                              child: _bottomBar(),
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           );

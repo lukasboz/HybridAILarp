@@ -12,6 +12,7 @@ service cloud.firestore {
     // rooms/{id}/votes/{uid}: choice enum, candidateId, revision, updatedAt.
     // invites/{48-hex-token}: roomId, title, createdBy, expiresAt (max 7 days).
     // Invite get is a capability lookup; invite listing is always denied.
+    // The host renews an expiring link by pointing lastJoinInviteId at a new invite.
     // Membership changes and preference changes atomically reopen the plan.
     // Queries: rooms where memberIds array-contains auth.uid; member/vote lists
     // under an already joined room. No public catalogue or user-profile collection.
@@ -123,7 +124,7 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/invites/$(request.resource.data.lastJoinInviteId)).data.roomId == id;
       allow update: if signedIn() && validRoom(request.resource.data)
         && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId','title','date','city','createdAt'])
-        && (joining() || resetting() || proposing() || confirming());
+        && (joining() || resetting() || proposing() || confirming() || renewing());
       allow delete: if false;
       function joining() {
         let d = request.resource.data;
@@ -145,9 +146,10 @@ service cloud.firestore {
           && getAfter(memberPath(id,request.auth.uid)).data.updatedAt == request.time
           && get(memberPath(id,request.auth.uid)).data.updatedAt != request.time;
       }
+      // A confirmed plan reopens only through a card, member or option change.
       function proposing() {
         let d = request.resource.data;
-        return request.auth.uid == resource.data.ownerId
+        return request.auth.uid == resource.data.ownerId && resource.data.status != 'confirmed'
           && d.diff(resource.data).affectedKeys().hasOnly(['revision','proposal','status'])
           && d.revision == resource.data.revision + 1 && d.status == 'voting' && d.proposal != null
           && (!d.proposal.candidateId.matches('^option-.*') || exists(/databases/$(database)/documents/rooms/$(id)/options/$(d.proposal.candidateId)));
@@ -156,6 +158,13 @@ service cloud.firestore {
         let d = request.resource.data;
         return request.auth.uid == resource.data.ownerId && resource.data.status == 'voting'
           && d.diff(resource.data).affectedKeys().hasOnly(['status']) && d.status == 'confirmed' && unanimous(id,d);
+      }
+      // The host replaces an expiring invitation with a new capability for this room.
+      function renewing() {
+        let d = request.resource.data;
+        return request.auth.uid == resource.data.ownerId
+          && d.diff(resource.data).affectedKeys().hasOnly(['lastJoinInviteId'])
+          && getAfter(/databases/$(database)/documents/invites/$(d.lastJoinInviteId)).data.roomId == id;
       }
       match /members/{uid} {
         allow read: if isMember(id);

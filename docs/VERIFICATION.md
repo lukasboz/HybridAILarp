@@ -23,9 +23,18 @@ The canonical application is now `app/`. Results below concern that application 
 | Production Firebase services | Real Android SDK tests passed Auth, App Check, server-backed approved-card writes/reads and AI drafting. The v0.2.1 test exercised a 45-second primary timeout and a successful `gemini-3.5-flash-lite` fallback; returned preferences validated. Synthetic test documents were removed. An iPhone-registration server probe reproduced Gemini 3.8 high-demand HTTP 500 and succeeded with the fallback; that is backend evidence, not a successful native iPhone AI draft. AI Logic App Check enforcement remains enabled. |
 | Cross-device runtime | An Android SDK client joined the iPhone-created plan and shared an allowlisted card. The phone’s preference draft failed on the old build during provider overload, so final real-device voting/confirmation remains pending. Temporary Android guests were removed while the user was away; the iPhone plan was preserved. |
 | AI resilience | Primary and fallback requests have separate 45-second deadlines and closed HTTP clients. Only transient model failures use the fallback. Device verification/configuration errors remain explicit. Draft and explanation receipts report the model actually used. Seven regression tests cover these behaviors. |
-| Firestore rules | Unchanged. All 12 retained authorization tests passed against the local emulator, including the eight-participant access-call limit. The deployed rules were retrieved through the Firebase plugin and match the repository exactly. |
+| Firestore rules | At migration: unchanged, all 12 authorization tests passed against the local emulator, and the deployed rules matched the repository exactly. The repository rules have since gained invitation renewal and a confirmed-plan proposal lock (see below), so they now differ from the deployed rules until they are deployed. |
 | CI | [Run 44749125076](https://github.com/lukasboz/HybridAILarp/actions/runs/44749125076) passed analysis/28 tests/web, Android APK and iOS development compilation for the AI fix. All artifact steps use Node 24 via `upload-artifact@v7`. |
 | Production | The Flutter migration and verified AI fix are merged into main. No Flutter Hosting deployment, rules deployment, Remote Config publication, signing-key upload or billing change was performed. The public Hosting site is still the earlier client. |
+
+## Integration fixes — November 20, 2026 (Windows 11 checkout)
+
+| Area | Evidence |
+| --- | --- |
+| Static analysis | `bash scripts/flutter.sh analyze` with Flutter 3.50.1: no issues. |
+| Flutter tests | 34 tests: all 30 non-golden tests pass. These include new cases for past dates, a confirmed-plan proposal lock, reopened-decision notices, live-plan restore on launch, the system Back route, confirmed-plan sharing, calendar folding and explanation payloads without member IDs. The 4 golden comparisons fail on Windows by 3.08%, 0.99% and 3.59%. Unmodified main fails by exactly the same amounts on this machine, so the baselines are Linux-rendered and CI remains the golden reference. |
+| Firestore rules | `npm run test:rules` on a local emulator (Java 23, Node 22): 13 of 13 pass. These include host-only invitation renewal for the same room and a refused proposal after confirmation. The new rules have not been deployed. |
+| Not verified here | No Firebase client configuration is present in this checkout. Live invitation renewal, join error messages, launch restore against a real project, browser address-bar cleanup, Android Back on a device, and the travel map on physical screens still need checking. |
 
 The retained HTML, Compose and Swift planner checks are historical evidence for the older clients. The rows above record the separate Flutter build and runtime evidence.
 

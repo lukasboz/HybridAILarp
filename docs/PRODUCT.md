@@ -30,7 +30,7 @@ Sample content is visibly labelled. It is an interaction sandbox, not evidence o
 
 ### Create or join
 
-The host supplies a title, date and first name. A live room uses an anonymous Firebase identity so joining does not start with a registration wall. Invitation links are long random capabilities, expire after seven days, and admit at most eight people. Members know that invitees can read approved room information.
+The host supplies a title, date and first name. A live room uses an anonymous Firebase identity so joining does not start with a registration wall. Invitation links are long random capabilities, expire after seven days, and admit at most eight people. When the current link has less than a day left, the host's next share creates a fresh one. The create and join screens tell people that invitees can read names and approved cards.
 
 The local exploration mode is a separate choice that stores the room on the current device and supports sample participants. It must never present its invitation as a real cross-device link.
 
@@ -66,7 +66,7 @@ Surviving activities are ordered by:
 
 The fit estimate combines interest overlap, budget headroom and estimated travel convenience. It is not a probability or a prediction of happiness. A detail view makes each person’s fit visible using the room’s shared cards.
 
-The map is an illustrative Toronto schematic. Its arcs show neighbourhood-to-activity relationships. It is not a navigation map. Travel is estimated from neighbourhood centres, not precise addresses or live TTC conditions.
+The detail view's map is an illustrative Toronto schematic. Its arcs show neighbourhood-to-activity relationships, and each person's estimated travel appears beside their own limit. It is not a navigation map. Travel is estimated from neighbourhood centres, not precise addresses or live TTC conditions.
 
 Cloud explanations are optional and require a clear disclosure. The model receives allowlisted cards and eligible candidates, explains aggregate group fit and tradeoffs, and returns only known candidate IDs. It cannot add a venue or bypass the deterministic filter.
 
