@@ -1,0 +1,11 @@
+{
+  "id": "/", "name": "MeetHalfway", "short_name": "MeetHalfway",
+  "description": "Private preferences. Fairer plans. Good times together.",
+  "start_url": "./", "scope": "./", "display": "standalone",
+  "background_color": "#fcfcfe", "theme_color": "#fcfcfe",
+  "icons": [
+    {"src":"./assets/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
+    {"src":"./assets/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"},
+    {"src":"./assets/mark.svg","sizes":"any","type":"image/svg+xml","purpose":"any"}
+  ]
+}

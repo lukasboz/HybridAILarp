@@ -1,0 +1,5 @@
+{
+  "colors": {"canvas":"#FCFCFE","surface":"#FFFFFF","ink":"#292735","secondary":"#74647F","accent":"#8055CE","accentSoft":"#ECE4F8","border":"#E7E1ED","orb":"#D8CEEE"},
+  "sizes": {"pageInset":20,"cardRadius":20,"controlRadius":12,"tileSize":52,"orbSize":82,"peopleRadius":75,"tabHeight":59,"sidebarWidth":208,"headingSize":22,"bodySize":14,"captionSize":11},
+  "tabs": [{"id":"home","label":"Discover","symbol":"sparkles"},{"id":"plans","label":"My plans","symbol":"calendar"},{"id":"preferences","label":"Preferences","symbol":"slider.horizontal.3"},{"id":"privacy","label":"Privacy","symbol":"lock.shield"}]
+}

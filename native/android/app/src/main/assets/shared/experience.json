@@ -1,0 +1,497 @@
+{
+  "areas": [
+    {
+      "id": "annex",
+      "name": "The Annex",
+      "lat": 43.67,
+      "lng": -79.405
+    },
+    {
+      "id": "leslieville",
+      "name": "Leslieville",
+      "lat": 43.663,
+      "lng": -79.329
+    },
+    {
+      "id": "liberty",
+      "name": "Liberty Village",
+      "lat": 43.639,
+      "lng": -79.42
+    },
+    {
+      "id": "downtown",
+      "name": "Downtown",
+      "lat": 43.653,
+      "lng": -79.383
+    },
+    {
+      "id": "midtown",
+      "name": "Midtown",
+      "lat": 43.706,
+      "lng": -79.398
+    },
+    {
+      "id": "junction",
+      "name": "The Junction",
+      "lat": 43.665,
+      "lng": -79.464
+    }
+  ],
+  "catalog": [
+    {
+      "id": "college-games",
+      "name": "A little friendly competition",
+      "venue": "Snakes & Lattes College",
+      "area": "Little Italy",
+      "lat": 43.655,
+      "lng": -79.414,
+      "cost": 22,
+      "tags": [
+        "games",
+        "food",
+        "coffee"
+      ],
+      "noise": 2,
+      "indoor": true,
+      "stepFree": null,
+      "theme": "games",
+      "description": "Pick a game, order something good, and let the conversation happen.",
+      "url": "https://www.snakesandlattes.com/college",
+      "duration": 90,
+      "windows": [
+        [
+          660,
+          1320
+        ]
+      ],
+      "dataSource": "demo",
+      "verifiedAt": null
+    },
+    {
+      "id": "ago",
+      "name": "Get a fresh perspective",
+      "venue": "Art Gallery of Ontario",
+      "area": "Grange Park",
+      "lat": 43.654,
+      "lng": -79.392,
+      "cost": 30,
+      "tags": [
+        "art"
+      ],
+      "noise": 1,
+      "indoor": true,
+      "stepFree": null,
+      "theme": "art",
+      "description": "An unhurried gallery wander with plenty to talk about afterwards.",
+      "url": "https://ago.ca/",
+      "duration": 90,
+      "windows": [
+        [
+          660,
+          1320
+        ]
+      ],
+      "dataSource": "demo",
+      "verifiedAt": null
+    },
+    {
+      "id": "riverdale",
+      "name": "Catch the city slowing down",
+      "venue": "Riverdale Park East",
+      "area": "Riverdale",
+      "lat": 43.669,
+      "lng": -79.355,
+      "cost": 0,
+      "tags": [
+        "outdoors",
+        "coffee"
+      ],
+      "noise": 1,
+      "indoor": false,
+      "stepFree": null,
+      "theme": "park",
+      "description": "A skyline view and a slow walk. Bring your own favourite drink.",
+      "url": "https://www.toronto.ca/explore-enjoy/parks-recreation/",
+      "duration": 90,
+      "windows": [
+        [
+          660,
+          1320
+        ]
+      ],
+      "dataSource": "demo",
+      "verifiedAt": null
+    },
+    {
+      "id": "harbourfront",
+      "name": "Take the scenic route",
+      "venue": "Harbourfront waterfront",
+      "area": "Harbourfront",
+      "lat": 43.638,
+      "lng": -79.381,
+      "cost": 0,
+      "tags": [
+        "outdoors",
+        "art"
+      ],
+      "noise": 1,
+      "indoor": false,
+      "stepFree": null,
+      "theme": "water",
+      "description": "A waterfront wander with room for a long-overdue catch-up.",
+      "url": "https://harbourfrontcentre.com/",
+      "duration": 90,
+      "windows": [
+        [
+          660,
+          1320
+        ]
+      ],
+      "dataSource": "demo",
+      "verifiedAt": null
+    },
+    {
+      "id": "reference-library",
+      "name": "A quiet kind of hangout",
+      "venue": "Toronto Reference Library",
+      "area": "Yorkville",
+      "lat": 43.671,
+      "lng": -79.387,
+      "cost": 0,
+      "tags": [
+        "art",
+        "coffee"
+      ],
+      "noise": 1,
+      "indoor": true,
+      "stepFree": null,
+      "theme": "library",
+      "description": "Browse something unexpected, then trade your best discoveries.",
+      "url": "https://www.torontopubliclibrary.ca/torontoreferencelibrary/",
+      "duration": 90,
+      "windows": [
+        [
+          660,
+          1320
+        ]
+      ],
+      "dataSource": "demo",
+      "verifiedAt": null
+    },
+    {
+      "id": "kensington",
+      "name": "Make an afternoon of it",
+      "venue": "Kensington Market",
+      "area": "Kensington",
+      "lat": 43.655,
+      "lng": -79.4,
+      "cost": 18,
+      "tags": [
+        "food",
+        "art",
+        "outdoors"
+      ],
+      "noise": 2,
+      "indoor": false,
+      "stepFree": null,
+      "theme": "market",
+      "description": "A neighbourhood wander with a flexible stop for a bite.",
+      "url": "https://www.destinationtoronto.com/neighbourhoods/westside/kensington-market/",
+      "duration": 90,
+      "windows": [
+        [
+          660,
+          1320
+        ]
+      ],
+      "dataSource": "demo",
+      "verifiedAt": null
+    },
+    {
+      "id": "bentway",
+      "name": "Find your urban playground",
+      "venue": "The Bentway",
+      "area": "Fort York",
+      "lat": 43.638,
+      "lng": -79.404,
+      "cost": 0,
+      "tags": [
+        "outdoors",
+        "art"
+      ],
+      "noise": 2,
+      "indoor": false,
+      "stepFree": null,
+      "theme": "park",
+      "description": "Public art and a change of scenery under the Gardiner.",
+      "url": "https://thebentway.ca/",
+      "duration": 90,
+      "windows": [
+        [
+          660,
+          1320
+        ]
+      ],
+      "dataSource": "demo",
+      "verifiedAt": null
+    },
+    {
+      "id": "gardiner",
+      "name": "A small creative escape",
+      "venue": "Gardiner Museum",
+      "area": "Museum",
+      "lat": 43.668,
+      "lng": -79.393,
+      "cost": 20,
+      "tags": [
+        "art",
+        "coffee"
+      ],
+      "noise": 1,
+      "indoor": true,
+      "stepFree": null,
+      "theme": "art",
+      "description": "Take a closer look at ceramics, craft, and a slower afternoon.",
+      "url": "https://www.gardinermuseum.on.ca/",
+      "duration": 90,
+      "windows": [
+        [
+          660,
+          1320
+        ]
+      ],
+      "dataSource": "demo",
+      "verifiedAt": null
+    },
+    {
+      "id": "bellwoods",
+      "name": "The picnic everyone needed",
+      "venue": "Trinity Bellwoods Park",
+      "area": "Queen West",
+      "lat": 43.647,
+      "lng": -79.414,
+      "cost": 12,
+      "tags": [
+        "outdoors",
+        "food"
+      ],
+      "noise": 2,
+      "indoor": false,
+      "stepFree": null,
+      "theme": "picnic",
+      "description": "A bring-your-own picnic, a blanket, and no complicated agenda.",
+      "url": "https://www.toronto.ca/explore-enjoy/parks-recreation/",
+      "duration": 90,
+      "windows": [
+        [
+          660,
+          1320
+        ]
+      ],
+      "dataSource": "demo",
+      "verifiedAt": null
+    },
+    {
+      "id": "distillery",
+      "name": "Wander somewhere different",
+      "venue": "Distillery Historic District",
+      "area": "Distillery",
+      "lat": 43.65,
+      "lng": -79.359,
+      "cost": 16,
+      "tags": [
+        "art",
+        "coffee",
+        "outdoors"
+      ],
+      "noise": 2,
+      "indoor": false,
+      "stepFree": null,
+      "theme": "market",
+      "description": "A relaxed stroll, independent shops, and a coffee stop.",
+      "url": "https://www.thedistillerydistrict.com/",
+      "duration": 90,
+      "windows": [
+        [
+          660,
+          1320
+        ]
+      ],
+      "dataSource": "demo",
+      "verifiedAt": null
+    },
+    {
+      "id": "music",
+      "name": "An evening with a soundtrack",
+      "venue": "Toronto Music Garden",
+      "area": "Waterfront",
+      "lat": 43.637,
+      "lng": -79.394,
+      "cost": 0,
+      "tags": [
+        "music",
+        "outdoors"
+      ],
+      "noise": 1,
+      "indoor": false,
+      "stepFree": null,
+      "theme": "water",
+      "description": "Explore the garden together. Check the venue for any live programming.",
+      "url": "https://harbourfrontcentre.com/",
+      "duration": 90,
+      "windows": [
+        [
+          660,
+          1320
+        ]
+      ],
+      "dataSource": "demo",
+      "verifiedAt": null
+    },
+    {
+      "id": "sample-studio",
+      "name": "Make something together",
+      "venue": "MeetHalfway sample studio",
+      "area": "Downtown · fictional demo venue",
+      "lat": 43.653,
+      "lng": -79.384,
+      "cost": 24,
+      "tags": [
+        "art",
+        "games",
+        "coffee"
+      ],
+      "noise": 1,
+      "indoor": true,
+      "stepFree": true,
+      "theme": "studio",
+      "description": "A fictional, step-free workshop used to test accessibility constraints.",
+      "url": "",
+      "duration": 90,
+      "windows": [
+        [
+          660,
+          1320
+        ]
+      ],
+      "dataSource": "demo",
+      "verifiedAt": null
+    }
+  ],
+  "interests": [
+    {
+      "id": "games",
+      "name": "Games",
+      "icon": "dice"
+    },
+    {
+      "id": "art",
+      "name": "Art & culture",
+      "icon": "art"
+    },
+    {
+      "id": "food",
+      "name": "Food",
+      "icon": "food"
+    },
+    {
+      "id": "coffee",
+      "name": "Coffee",
+      "icon": "coffee"
+    },
+    {
+      "id": "outdoors",
+      "name": "Outdoors",
+      "icon": "sun"
+    },
+    {
+      "id": "music",
+      "name": "Music",
+      "icon": "music"
+    }
+  ],
+  "members": [
+    {
+      "id": "alex",
+      "name": "Alex",
+      "initials": "AL",
+      "color": "sage",
+      "card": {
+        "areaId": "annex",
+        "maxSpend": 30,
+        "maxTravel": 45,
+        "mode": "transit",
+        "interests": [
+          "games",
+          "art",
+          "coffee"
+        ],
+        "earliest": 960,
+        "latest": 1320,
+        "quiet": false,
+        "indoors": false,
+        "stepFree": false
+      }
+    },
+    {
+      "id": "maya",
+      "name": "Maya",
+      "initials": "MA",
+      "color": "peach",
+      "card": {
+        "areaId": "leslieville",
+        "maxSpend": 25,
+        "maxTravel": 45,
+        "mode": "transit",
+        "interests": [
+          "games",
+          "food",
+          "art"
+        ],
+        "earliest": 1020,
+        "latest": 1350,
+        "quiet": false,
+        "indoors": false,
+        "stepFree": false
+      }
+    },
+    {
+      "id": "jordan",
+      "name": "Jordan",
+      "initials": "JO",
+      "color": "lavender",
+      "card": {
+        "areaId": "liberty",
+        "maxSpend": 35,
+        "maxTravel": 40,
+        "mode": "transit",
+        "interests": [
+          "games",
+          "coffee",
+          "outdoors"
+        ],
+        "earliest": 990,
+        "latest": 1380,
+        "quiet": false,
+        "indoors": false,
+        "stepFree": false
+      }
+    }
+  ],
+  "defaultCard": {
+    "areaId": "annex",
+    "maxSpend": 30,
+    "maxTravel": 45,
+    "mode": "transit",
+    "interests": [
+      "games",
+      "art",
+      "coffee"
+    ],
+    "earliest": 960,
+    "latest": 1320,
+    "quiet": false,
+    "indoors": false,
+    "stepFree": false
+  }
+}

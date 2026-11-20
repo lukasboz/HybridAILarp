@@ -1,0 +1,8 @@
+version: 1
+bundleID: app.meethalfway.mobile
+infoPath: Resources/Info.plist
+iconPath: Resources/AppIcon.png
+resources:
+  - Resources/Shared
+  - Resources/Fonts
+  - Resources/NativeConfig.plist

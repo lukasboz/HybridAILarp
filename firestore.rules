@@ -1,0 +1,206 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Assumed data model (prototype rules; verify before broad release):
+    // rooms/{36-hex-id}: title(1..70), date(YYYY-MM-DD, format-only), city='Toronto',
+    // ownerId(immutable UID), memberIds(1..8 distinct UIDs), status enum,
+    // revision(int), proposal(null or candidateId/startMinute/revision),
+    // lastJoinInviteId(48-hex), createdAt(immutable server timestamp).
+    // rooms/{id}/members/{uid}: name(1..30, shared room display name),
+    // card(null or allowlisted approved preferences), inviteId(immutable), updatedAt.
+    // Raw private notes, exact locations, emails and credentials have NO cloud field.
+    // rooms/{id}/votes/{uid}: choice enum, candidateId, revision, updatedAt.
+    // invites/{48-hex-token}: roomId, title, createdBy, expiresAt (max 7 days).
+    // Invite get is a capability lookup; invite listing is always denied.
+    // Membership changes and preference changes atomically reopen the plan.
+    // Queries: rooms where memberIds array-contains auth.uid; member/vote lists
+    // under an already joined room. No public catalogue or user-profile collection.
+
+    function signedIn() { return request.auth != null; }
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+    function roomPath(id) { return /databases/$(database)/documents/rooms/$(id); }
+    function memberPath(id, uid) { return /databases/$(database)/documents/rooms/$(id)/members/$(uid); }
+    function isMember(id) { return signedIn() && request.auth.uid in get(roomPath(id)).data.memberIds; }
+    function validUid(uid) { return uid is string && uid.size() >= 1 && uid.size() <= 128; }
+    function validUidAt(ids, index) { return ids.size() <= index || validUid(ids[index]); }
+    function validCandidate(id) {
+      return id in ['college-games','ago','riverdale','harbourfront','reference-library','kensington','bentway','gardiner','bellwoods','distillery','music','sample-studio']
+        || (id is string && id.matches('^option-(0[1-9]|1[0-2])$'));
+    }
+    function validCard(c) {
+      return c == null || (c is map && c.keys().hasAll(['areaId','maxSpend','maxTravel','mode','interests','earliest','latest','quiet','indoors','stepFree'])
+        && c.keys().hasOnly(['areaId','maxSpend','maxTravel','mode','interests','earliest','latest','quiet','indoors','stepFree'])
+        && c.areaId in ['annex','leslieville','liberty','downtown','midtown','junction']
+        && c.maxSpend is int && c.maxSpend >= 0 && c.maxSpend <= 200
+        && c.maxTravel is int && c.maxTravel >= 5 && c.maxTravel <= 120
+        && c.mode in ['transit','walk','bike']
+        && c.interests is list && c.interests.size() >= 1 && c.interests.size() <= 6
+        && c.interests.hasOnly(['games','art','food','coffee','outdoors','music'])
+        && c.interests.toSet().size() == c.interests.size()
+        && c.earliest is int && c.earliest >= 360 && c.earliest <= 1380
+        && c.latest is int && c.latest >= 390 && c.latest <= 1440 && c.latest - c.earliest >= 90
+        && c.quiet is bool && c.indoors is bool && c.stepFree is bool);
+    }
+    function validProposal(p) {
+      return p == null || (p is map && p.keys().hasAll(['candidateId','startMinute','revision'])
+        && p.keys().hasOnly(['candidateId','startMinute','revision']) && validCandidate(p.candidateId)
+        && p.startMinute is int && p.startMinute >= 360 && p.startMinute <= 1350
+        && p.revision is int && p.revision >= 1 && p.revision <= 1000000);
+    }
+    function validRoom(d) {
+      return d.keys().hasAll(['title','date','city','ownerId','memberIds','status','revision','proposal','lastJoinInviteId','createdAt'])
+        && d.keys().hasOnly(['title','date','city','ownerId','memberIds','status','revision','proposal','lastJoinInviteId','createdAt'])
+        && d.title is string && d.title.size() >= 1 && d.title.size() <= 70
+        && d.date is string && d.date.size() == 10 && d.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && d.city == 'Toronto' && validUid(d.ownerId)
+        && d.memberIds is list && d.memberIds.size() >= 1 && d.memberIds.size() <= 8
+        && d.memberIds.toSet().size() == d.memberIds.size() && d.ownerId in d.memberIds
+        && ((request.method == 'update' && d.memberIds == resource.data.memberIds)
+          || (validUidAt(d.memberIds,0) && validUidAt(d.memberIds,1) && validUidAt(d.memberIds,2) && validUidAt(d.memberIds,3)
+            && validUidAt(d.memberIds,4) && validUidAt(d.memberIds,5) && validUidAt(d.memberIds,6) && validUidAt(d.memberIds,7)))
+        && d.status in ['gathering','voting','confirmed'] && d.revision is int && d.revision >= 0 && d.revision <= 1000000
+        && validProposal(d.proposal)
+        && (d.status == 'gathering' ? d.proposal == null : d.proposal != null)
+        && (d.proposal == null || d.proposal.revision == d.revision)
+        && d.lastJoinInviteId is string && d.lastJoinInviteId.matches('^[a-f0-9]{48}$')
+        && d.createdAt is timestamp;
+    }
+    function validMember(d) {
+      return d.keys().hasAll(['name','card','inviteId','updatedAt']) && d.keys().hasOnly(['name','card','inviteId','updatedAt'])
+        && d.name is string && d.name.size() >= 1 && d.name.size() <= 30 && validCard(d.card)
+        && d.inviteId is string && d.inviteId.matches('^[a-f0-9]{48}$')
+        && d.updatedAt == request.time;
+    }
+    function validInvite(d) {
+      return d.keys().hasAll(['roomId','title','createdBy','expiresAt']) && d.keys().hasOnly(['roomId','title','createdBy','expiresAt'])
+        && d.roomId is string && d.roomId.matches('^[a-f0-9]{36}$')
+        && d.title is string && d.title.size() >= 1 && d.title.size() <= 70
+        && validUid(d.createdBy) && d.expiresAt is timestamp && d.expiresAt > request.time
+        && d.expiresAt <= request.time + duration.value(7,'d');
+    }
+    function inviteAllows(id, token) {
+      let invite = get(/databases/$(database)/documents/invites/$(token));
+      return invite.data.roomId == id && invite.data.expiresAt > request.time;
+    }
+    function validVote(d) {
+      return d.keys().hasAll(['choice','candidateId','revision','updatedAt']) && d.keys().hasOnly(['choice','candidateId','revision','updatedAt'])
+        && d.choice in ['yes','maybe','no'] && validCandidate(d.candidateId)
+        && d.revision is int && d.revision >= 1 && d.revision <= 1000000 && d.updatedAt == request.time;
+    }
+    function validOption(d) {
+      return d.keys().hasAll(['name','venue','areaId','cost','tags','noise','indoor','stepFree','description','url','opens','closes','createdBy','updatedAt'])
+        && d.keys().hasOnly(['name','venue','areaId','cost','tags','noise','indoor','stepFree','description','url','opens','closes','createdBy','updatedAt'])
+        && d.name is string && d.name.size() >= 1 && d.name.size() <= 70
+        && d.venue is string && d.venue.size() >= 1 && d.venue.size() <= 100
+        && d.description is string && d.description.size() >= 1 && d.description.size() <= 300
+        && d.url is string && d.url.size() <= 1000 && (d.url == '' || d.url.matches('^https://.*'))
+        && d.areaId in ['annex','leslieville','liberty','downtown','midtown','junction']
+        && d.cost is int && d.cost >= 0 && d.cost <= 200
+        && d.tags is list && d.tags.size() >= 1 && d.tags.size() <= 6 && d.tags.toSet().size() == d.tags.size()
+        && d.tags.hasOnly(['games','art','food','coffee','outdoors','music'])
+        && d.noise is int && d.noise in [1,2,3] && d.indoor is bool && (d.stepFree == null || d.stepFree == true)
+        && d.opens is int && d.closes is int && d.opens >= 360 && d.closes <= 1440 && d.closes - d.opens >= 90
+        && validUid(d.createdBy) && d.updatedAt == request.time;
+    }
+    function matchingYes(id, uid, proposal) {
+      let v = get(/databases/$(database)/documents/rooms/$(id)/votes/$(uid)).data;
+      return v.choice == 'yes' && v.revision == proposal.revision && v.candidateId == proposal.candidateId;
+    }
+    function yesAt(id, d, index) {
+      return d.memberIds.size() <= index || matchingYes(id,d.memberIds[index],d.proposal);
+    }
+    function unanimous(id, d) {
+      return d.memberIds.size() >= 2 && yesAt(id,d,0) && yesAt(id,d,1) && yesAt(id,d,2) && yesAt(id,d,3)
+        && yesAt(id,d,4) && yesAt(id,d,5) && yesAt(id,d,6) && yesAt(id,d,7);
+    }
+    match /rooms/{id} {
+      allow read: if signedIn() && request.auth.uid in resource.data.memberIds;
+      allow create: if signedIn() && id.matches('^[a-f0-9]{36}$') && validRoom(request.resource.data)
+        && request.resource.data.ownerId == request.auth.uid && request.resource.data.memberIds == [request.auth.uid]
+        && request.resource.data.createdAt == request.time && request.resource.data.revision == 0
+        && request.resource.data.status == 'gathering'
+        && getAfter(memberPath(id,request.auth.uid)).data.inviteId == request.resource.data.lastJoinInviteId
+        && getAfter(/databases/$(database)/documents/invites/$(request.resource.data.lastJoinInviteId)).data.roomId == id;
+      allow update: if signedIn() && validRoom(request.resource.data)
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId','title','date','city','createdAt'])
+        && (joining() || resetting() || proposing() || confirming());
+      allow delete: if false;
+      function joining() {
+        let d = request.resource.data;
+        return !(request.auth.uid in resource.data.memberIds)
+          && d.memberIds.size() == resource.data.memberIds.size() + 1
+          && d.memberIds.hasAll(resource.data.memberIds)
+          && d.memberIds.toSet().difference(resource.data.memberIds.toSet()).hasOnly([request.auth.uid])
+          && !exists(memberPath(id,request.auth.uid))
+          && getAfter(memberPath(id,request.auth.uid)).data.inviteId == d.lastJoinInviteId
+          && inviteAllows(id,d.lastJoinInviteId)
+          && d.revision == resource.data.revision + 1 && d.status == 'gathering' && d.proposal == null;
+      }
+      function resetting() {
+        let d = request.resource.data;
+        return request.auth.uid in resource.data.memberIds
+          && d.diff(resource.data).affectedKeys().hasOnly(['revision','proposal','status'])
+          && d.memberIds == resource.data.memberIds && d.lastJoinInviteId == resource.data.lastJoinInviteId
+          && d.revision == resource.data.revision + 1 && d.status == 'gathering' && d.proposal == null
+          && getAfter(memberPath(id,request.auth.uid)).data.updatedAt == request.time
+          && get(memberPath(id,request.auth.uid)).data.updatedAt != request.time;
+      }
+      function proposing() {
+        let d = request.resource.data;
+        return request.auth.uid == resource.data.ownerId
+          && d.diff(resource.data).affectedKeys().hasOnly(['revision','proposal','status'])
+          && d.revision == resource.data.revision + 1 && d.status == 'voting' && d.proposal != null
+          && (!d.proposal.candidateId.matches('^option-.*') || exists(/databases/$(database)/documents/rooms/$(id)/options/$(d.proposal.candidateId)));
+      }
+      function confirming() {
+        let d = request.resource.data;
+        return request.auth.uid == resource.data.ownerId && resource.data.status == 'voting'
+          && d.diff(resource.data).affectedKeys().hasOnly(['status']) && d.status == 'confirmed' && unanimous(id,d);
+      }
+      match /members/{uid} {
+        allow read: if isMember(id);
+        allow create: if isOwner(uid) && validMember(request.resource.data) && request.resource.data.card == null
+          && uid in getAfter(roomPath(id)).data.memberIds
+          && (getAfter(roomPath(id)).data.ownerId == uid || inviteAllows(id,request.resource.data.inviteId));
+        allow update: if isOwner(uid) && isMember(id) && validMember(request.resource.data)
+          && request.resource.data.inviteId == resource.data.inviteId
+          && getAfter(roomPath(id)).data.revision == get(roomPath(id)).data.revision + 1
+          && getAfter(roomPath(id)).data.status == 'gathering' && getAfter(roomPath(id)).data.proposal == null;
+        allow delete: if false;
+      }
+      match /votes/{uid} {
+        allow read: if isMember(id);
+        allow create, update: if isOwner(uid) && isMember(id) && validVote(request.resource.data)
+          && get(roomPath(id)).data.status == 'voting'
+          && get(memberPath(id,uid)).data.card != null
+          && request.resource.data.revision == get(roomPath(id)).data.proposal.revision
+          && request.resource.data.candidateId == get(roomPath(id)).data.proposal.candidateId;
+        allow delete: if false;
+      }
+      // Twelve fixed slots bound storage and query size. Host edits reopen votes.
+      match /options/{optionId} {
+        allow read: if isMember(id);
+        allow create: if signedIn() && optionId.matches('^option-(0[1-9]|1[0-2])$') && validOption(request.resource.data)
+          && request.auth.uid == get(roomPath(id)).data.ownerId && request.resource.data.createdBy == request.auth.uid
+          && getAfter(roomPath(id)).data.revision == get(roomPath(id)).data.revision + 1
+          && getAfter(roomPath(id)).data.status == 'gathering' && getAfter(roomPath(id)).data.proposal == null;
+        allow update: if signedIn() && validOption(request.resource.data)
+          && request.auth.uid == get(roomPath(id)).data.ownerId && request.resource.data.createdBy == resource.data.createdBy
+          && getAfter(roomPath(id)).data.revision == get(roomPath(id)).data.revision + 1
+          && getAfter(roomPath(id)).data.status == 'gathering' && getAfter(roomPath(id)).data.proposal == null;
+        allow delete: if false;
+      }
+    }
+    match /invites/{token} {
+      allow get: if signedIn() && resource.data.expiresAt > request.time;
+      allow list: if false;
+      allow create: if signedIn() && token.matches('^[a-f0-9]{48}$') && validInvite(request.resource.data)
+        && request.resource.data.createdBy == request.auth.uid
+        && getAfter(roomPath(request.resource.data.roomId)).data.ownerId == request.auth.uid
+        && getAfter(roomPath(request.resource.data.roomId)).data.lastJoinInviteId == token
+        && getAfter(roomPath(request.resource.data.roomId)).data.title == request.resource.data.title;
+      allow update, delete: if false;
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}

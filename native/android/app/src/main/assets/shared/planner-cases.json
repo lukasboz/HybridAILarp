@@ -1,0 +1,635 @@
+[
+  {
+    "name": "sample",
+    "members": [
+      {
+        "id": "alex",
+        "name": "Alex",
+        "initials": "AL",
+        "color": "sage",
+        "card": {
+          "areaId": "annex",
+          "maxSpend": 30,
+          "maxTravel": 45,
+          "mode": "transit",
+          "interests": [
+            "games",
+            "art",
+            "coffee"
+          ],
+          "earliest": 960,
+          "latest": 1320,
+          "quiet": false,
+          "indoors": false,
+          "stepFree": false
+        }
+      },
+      {
+        "id": "maya",
+        "name": "Maya",
+        "initials": "MA",
+        "color": "peach",
+        "card": {
+          "areaId": "leslieville",
+          "maxSpend": 25,
+          "maxTravel": 45,
+          "mode": "transit",
+          "interests": [
+            "games",
+            "food",
+            "art"
+          ],
+          "earliest": 1020,
+          "latest": 1350,
+          "quiet": false,
+          "indoors": false,
+          "stepFree": false
+        }
+      },
+      {
+        "id": "jordan",
+        "name": "Jordan",
+        "initials": "JO",
+        "color": "lavender",
+        "card": {
+          "areaId": "liberty",
+          "maxSpend": 35,
+          "maxTravel": 40,
+          "mode": "transit",
+          "interests": [
+            "games",
+            "coffee",
+            "outdoors"
+          ],
+          "earliest": 990,
+          "latest": 1380,
+          "quiet": false,
+          "indoors": false,
+          "stepFree": false
+        }
+      }
+    ],
+    "expected": [
+      {
+        "id": "reference-library",
+        "minFit": 74,
+        "meanFit": 81,
+        "maxTravel": 32,
+        "start": 1020
+      },
+      {
+        "id": "harbourfront",
+        "minFit": 74,
+        "meanFit": 75,
+        "maxTravel": 33,
+        "start": 1020
+      },
+      {
+        "id": "bentway",
+        "minFit": 72,
+        "meanFit": 76,
+        "maxTravel": 40,
+        "start": 1020
+      },
+      {
+        "id": "sample-studio",
+        "minFit": 70,
+        "meanFit": 76,
+        "maxTravel": 31,
+        "start": 1020
+      },
+      {
+        "id": "college-games",
+        "minFit": 67,
+        "meanFit": 73,
+        "maxTravel": 42,
+        "start": 1020
+      },
+      {
+        "id": "kensington",
+        "minFit": 67,
+        "meanFit": 68,
+        "maxTravel": 37,
+        "start": 1020
+      },
+      {
+        "id": "gardiner",
+        "minFit": 66,
+        "meanFit": 74,
+        "maxTravel": 34,
+        "start": 1020
+      },
+      {
+        "id": "distillery",
+        "minFit": 66,
+        "meanFit": 71,
+        "maxTravel": 33,
+        "start": 1020
+      },
+      {
+        "id": "riverdale",
+        "minFit": 63,
+        "meanFit": 75,
+        "maxTravel": 38,
+        "start": 1020
+      },
+      {
+        "id": "bellwoods",
+        "minFit": 59,
+        "meanFit": 67,
+        "maxTravel": 42,
+        "start": 1020
+      },
+      {
+        "id": "music",
+        "minFit": 58,
+        "meanFit": 66,
+        "maxTravel": 37,
+        "start": 1020
+      }
+    ]
+  },
+  {
+    "name": "zero-budget",
+    "members": [
+      {
+        "id": "alex",
+        "name": "Alex",
+        "initials": "AL",
+        "color": "sage",
+        "card": {
+          "areaId": "annex",
+          "maxSpend": 0,
+          "maxTravel": 45,
+          "mode": "transit",
+          "interests": [
+            "games",
+            "art",
+            "coffee"
+          ],
+          "earliest": 960,
+          "latest": 1320,
+          "quiet": false,
+          "indoors": false,
+          "stepFree": false
+        }
+      },
+      {
+        "id": "maya",
+        "name": "Maya",
+        "initials": "MA",
+        "color": "peach",
+        "card": {
+          "areaId": "leslieville",
+          "maxSpend": 0,
+          "maxTravel": 45,
+          "mode": "transit",
+          "interests": [
+            "games",
+            "food",
+            "art"
+          ],
+          "earliest": 1020,
+          "latest": 1350,
+          "quiet": false,
+          "indoors": false,
+          "stepFree": false
+        }
+      },
+      {
+        "id": "jordan",
+        "name": "Jordan",
+        "initials": "JO",
+        "color": "lavender",
+        "card": {
+          "areaId": "liberty",
+          "maxSpend": 0,
+          "maxTravel": 40,
+          "mode": "transit",
+          "interests": [
+            "games",
+            "coffee",
+            "outdoors"
+          ],
+          "earliest": 990,
+          "latest": 1380,
+          "quiet": false,
+          "indoors": false,
+          "stepFree": false
+        }
+      }
+    ],
+    "expected": [
+      {
+        "id": "reference-library",
+        "minFit": 74,
+        "meanFit": 81,
+        "maxTravel": 32,
+        "start": 1020
+      },
+      {
+        "id": "harbourfront",
+        "minFit": 74,
+        "meanFit": 75,
+        "maxTravel": 33,
+        "start": 1020
+      },
+      {
+        "id": "bentway",
+        "minFit": 72,
+        "meanFit": 76,
+        "maxTravel": 40,
+        "start": 1020
+      },
+      {
+        "id": "riverdale",
+        "minFit": 63,
+        "meanFit": 75,
+        "maxTravel": 38,
+        "start": 1020
+      },
+      {
+        "id": "music",
+        "minFit": 58,
+        "meanFit": 66,
+        "maxTravel": 37,
+        "start": 1020
+      }
+    ]
+  },
+  {
+    "name": "quiet-indoors",
+    "members": [
+      {
+        "id": "alex",
+        "name": "Alex",
+        "initials": "AL",
+        "color": "sage",
+        "card": {
+          "areaId": "annex",
+          "maxSpend": 30,
+          "maxTravel": 45,
+          "mode": "transit",
+          "interests": [
+            "games",
+            "art",
+            "coffee"
+          ],
+          "earliest": 960,
+          "latest": 1320,
+          "quiet": true,
+          "indoors": true,
+          "stepFree": false
+        }
+      },
+      {
+        "id": "maya",
+        "name": "Maya",
+        "initials": "MA",
+        "color": "peach",
+        "card": {
+          "areaId": "leslieville",
+          "maxSpend": 25,
+          "maxTravel": 45,
+          "mode": "transit",
+          "interests": [
+            "games",
+            "food",
+            "art"
+          ],
+          "earliest": 1020,
+          "latest": 1350,
+          "quiet": true,
+          "indoors": true,
+          "stepFree": false
+        }
+      },
+      {
+        "id": "jordan",
+        "name": "Jordan",
+        "initials": "JO",
+        "color": "lavender",
+        "card": {
+          "areaId": "liberty",
+          "maxSpend": 35,
+          "maxTravel": 40,
+          "mode": "transit",
+          "interests": [
+            "games",
+            "coffee",
+            "outdoors"
+          ],
+          "earliest": 990,
+          "latest": 1380,
+          "quiet": true,
+          "indoors": true,
+          "stepFree": false
+        }
+      }
+    ],
+    "expected": [
+      {
+        "id": "reference-library",
+        "minFit": 74,
+        "meanFit": 81,
+        "maxTravel": 32,
+        "start": 1020
+      },
+      {
+        "id": "sample-studio",
+        "minFit": 70,
+        "meanFit": 76,
+        "maxTravel": 31,
+        "start": 1020
+      },
+      {
+        "id": "gardiner",
+        "minFit": 66,
+        "meanFit": 74,
+        "maxTravel": 34,
+        "start": 1020
+      }
+    ]
+  },
+  {
+    "name": "confirmed-access",
+    "members": [
+      {
+        "id": "alex",
+        "name": "Alex",
+        "initials": "AL",
+        "color": "sage",
+        "card": {
+          "areaId": "annex",
+          "maxSpend": 30,
+          "maxTravel": 45,
+          "mode": "transit",
+          "interests": [
+            "games",
+            "art",
+            "coffee"
+          ],
+          "earliest": 960,
+          "latest": 1320,
+          "quiet": false,
+          "indoors": false,
+          "stepFree": true
+        }
+      },
+      {
+        "id": "maya",
+        "name": "Maya",
+        "initials": "MA",
+        "color": "peach",
+        "card": {
+          "areaId": "leslieville",
+          "maxSpend": 25,
+          "maxTravel": 45,
+          "mode": "transit",
+          "interests": [
+            "games",
+            "food",
+            "art"
+          ],
+          "earliest": 1020,
+          "latest": 1350,
+          "quiet": false,
+          "indoors": false,
+          "stepFree": true
+        }
+      },
+      {
+        "id": "jordan",
+        "name": "Jordan",
+        "initials": "JO",
+        "color": "lavender",
+        "card": {
+          "areaId": "liberty",
+          "maxSpend": 35,
+          "maxTravel": 40,
+          "mode": "transit",
+          "interests": [
+            "games",
+            "coffee",
+            "outdoors"
+          ],
+          "earliest": 990,
+          "latest": 1380,
+          "quiet": false,
+          "indoors": false,
+          "stepFree": true
+        }
+      }
+    ],
+    "expected": [
+      {
+        "id": "sample-studio",
+        "minFit": 70,
+        "meanFit": 76,
+        "maxTravel": 31,
+        "start": 1020
+      }
+    ]
+  },
+  {
+    "name": "no-overlap",
+    "members": [
+      {
+        "id": "alex",
+        "name": "Alex",
+        "initials": "AL",
+        "color": "sage",
+        "card": {
+          "areaId": "annex",
+          "maxSpend": 30,
+          "maxTravel": 45,
+          "mode": "transit",
+          "interests": [
+            "games",
+            "art",
+            "coffee"
+          ],
+          "earliest": 600,
+          "latest": 720,
+          "quiet": false,
+          "indoors": false,
+          "stepFree": false
+        }
+      },
+      {
+        "id": "maya",
+        "name": "Maya",
+        "initials": "MA",
+        "color": "peach",
+        "card": {
+          "areaId": "leslieville",
+          "maxSpend": 25,
+          "maxTravel": 45,
+          "mode": "transit",
+          "interests": [
+            "games",
+            "food",
+            "art"
+          ],
+          "earliest": 1200,
+          "latest": 1380,
+          "quiet": false,
+          "indoors": false,
+          "stepFree": false
+        }
+      },
+      {
+        "id": "jordan",
+        "name": "Jordan",
+        "initials": "JO",
+        "color": "lavender",
+        "card": {
+          "areaId": "liberty",
+          "maxSpend": 35,
+          "maxTravel": 40,
+          "mode": "transit",
+          "interests": [
+            "games",
+            "coffee",
+            "outdoors"
+          ],
+          "earliest": 1200,
+          "latest": 1380,
+          "quiet": false,
+          "indoors": false,
+          "stepFree": false
+        }
+      }
+    ],
+    "expected": []
+  },
+  {
+    "name": "missing-card",
+    "members": [
+      {
+        "id": "alex",
+        "name": "Alex",
+        "initials": "AL",
+        "color": "sage",
+        "card": null
+      },
+      {
+        "id": "maya",
+        "name": "Maya",
+        "initials": "MA",
+        "color": "peach",
+        "card": {
+          "areaId": "leslieville",
+          "maxSpend": 25,
+          "maxTravel": 45,
+          "mode": "transit",
+          "interests": [
+            "games",
+            "food",
+            "art"
+          ],
+          "earliest": 1020,
+          "latest": 1350,
+          "quiet": false,
+          "indoors": false,
+          "stepFree": false
+        }
+      },
+      {
+        "id": "jordan",
+        "name": "Jordan",
+        "initials": "JO",
+        "color": "lavender",
+        "card": {
+          "areaId": "liberty",
+          "maxSpend": 35,
+          "maxTravel": 40,
+          "mode": "transit",
+          "interests": [
+            "games",
+            "coffee",
+            "outdoors"
+          ],
+          "earliest": 990,
+          "latest": 1380,
+          "quiet": false,
+          "indoors": false,
+          "stepFree": false
+        }
+      }
+    ],
+    "expected": []
+  },
+  {
+    "name": "walking",
+    "members": [
+      {
+        "id": "alex",
+        "name": "Alex",
+        "initials": "AL",
+        "color": "sage",
+        "card": {
+          "areaId": "annex",
+          "maxSpend": 30,
+          "maxTravel": 30,
+          "mode": "walk",
+          "interests": [
+            "games",
+            "art",
+            "coffee"
+          ],
+          "earliest": 960,
+          "latest": 1320,
+          "quiet": false,
+          "indoors": false,
+          "stepFree": false
+        }
+      },
+      {
+        "id": "maya",
+        "name": "Maya",
+        "initials": "MA",
+        "color": "peach",
+        "card": {
+          "areaId": "leslieville",
+          "maxSpend": 25,
+          "maxTravel": 30,
+          "mode": "walk",
+          "interests": [
+            "games",
+            "food",
+            "art"
+          ],
+          "earliest": 1020,
+          "latest": 1350,
+          "quiet": false,
+          "indoors": false,
+          "stepFree": false
+        }
+      },
+      {
+        "id": "jordan",
+        "name": "Jordan",
+        "initials": "JO",
+        "color": "lavender",
+        "card": {
+          "areaId": "liberty",
+          "maxSpend": 35,
+          "maxTravel": 30,
+          "mode": "walk",
+          "interests": [
+            "games",
+            "coffee",
+            "outdoors"
+          ],
+          "earliest": 990,
+          "latest": 1380,
+          "quiet": false,
+          "indoors": false,
+          "stepFree": false
+        }
+      }
+    ],
+    "expected": []
+  }
+]

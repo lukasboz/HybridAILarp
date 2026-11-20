@@ -1,0 +1,7 @@
+{
+  "firebase": {"apiKey":"","authDomain":"","projectId":"","appId":"","messagingSenderId":""},
+  "appCheckSiteKey":"",
+  "cloudModel":"gemini-3.8-flash",
+  "firebaseVersion":"13.3.0",
+  "emulator":false
+}
