@@ -409,6 +409,7 @@ class MeetStore extends ChangeNotifier {
 }
 
 String friendlyError(Object error) {
+  if (error is CloudAIException) return error.message;
   if (error is FormatException) return error.message;
   if (error is StateError) return error.message.toString();
   // SDK errors can contain internal identifiers; keep them out of product messages.

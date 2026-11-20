@@ -22,11 +22,12 @@ dart += '}\n'
 
 config = {'web': {}, 'android': {}, 'ios': {}, 'appCheckSiteKey': '',
           'cloudModel': 'gemini-3.8-flash',
+          'cloudFallbackModel': 'gemini-3.5-flash-lite',
           'publicWebUrl': 'https://meethalfway-2026-e43ca6.web.app/', 'emulator': False}
 web = ROOT / 'web/firebase-config.local.json'
 if web.exists():
     existing = json.loads(web.read_text())
-    config.update({key: existing[key] for key in ['appCheckSiteKey', 'cloudModel', 'publicWebUrl', 'emulator'] if key in existing})
+    config.update({key: existing[key] for key in ['appCheckSiteKey', 'cloudModel', 'cloudFallbackModel', 'publicWebUrl', 'emulator'] if key in existing})
     config['web'] = existing.get('firebase', {})
 android = ROOT / 'native/android/app/google-services.json'
 if android.exists():
