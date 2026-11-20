@@ -14,6 +14,8 @@ python3 "$repo_root/scripts/sync-flutter-assets.py"
 export PUB_CACHE="${PUB_CACHE:-$repo_root/.cache/pub}"
 export FLUTTER_SUPPRESS_ANALYTICS=true
 export GRADLE_USER_HOME="${GRADLE_USER_HOME:-$repo_root/.cache/gradle}"
+mkdir -p "$GRADLE_USER_HOME/init.d"
+cp "$repo_root/scripts/gradle-repositories.init.gradle" "$GRADLE_USER_HOME/init.d/meethalfway-repositories.gradle"
 if [[ -d "$repo_root/.cache/android-sdk" ]]; then
   export ANDROID_HOME="${ANDROID_HOME:-$repo_root/.cache/android-sdk}"
 fi

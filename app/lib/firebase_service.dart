@@ -33,14 +33,19 @@ class PlanExplanation {
 }
 
 class FirebaseService {
-  FirebaseService(this.config);
+  FirebaseService(this.config, {this.appName = defaultFirebaseAppName});
   final Json config;
+  final String appName;
+  FirebaseApp? _app;
+  bool _emulatorsConnected = false;
   Future<void>? _connecting;
   String modelName = 'gemini-3.8-flash';
   bool explanationsEnabled = true;
   bool connected = false;
-  String get uid => FirebaseAuth.instance.currentUser!.uid;
-  FirebaseFirestore get db => FirebaseFirestore.instance;
+  FirebaseApp get firebaseApp => _app ?? Firebase.app(appName);
+  FirebaseAuth get auth => FirebaseAuth.instanceFor(app: firebaseApp);
+  String get uid => auth.currentUser!.uid;
+  FirebaseFirestore get db => FirebaseFirestore.instanceFor(app: firebaseApp);
   String get publicUrl =>
       config['publicWebUrl'] as String? ??
       'https://meethalfway-2026-e43ca6.web.app/';
@@ -49,9 +54,15 @@ class FirebaseService {
       : defaultTargetPlatform == TargetPlatform.iOS
       ? 'ios'
       : 'android';
-  bool get configured =>
-      (config[_platform] as Map?)?['apiKey'] is String &&
-      ((config[_platform] as Map)['apiKey'] as String).isNotEmpty;
+  bool get configured {
+    final options = config[_platform];
+    return options is Map &&
+        ['apiKey', 'appId', 'messagingSenderId', 'projectId'].every(
+          (key) =>
+              options[key] is String && (options[key] as String).isNotEmpty,
+        );
+  }
+
   static Future<FirebaseService> load() async => FirebaseService(
     jsonDecode(await rootBundle.loadString('assets/firebase.json')) as Json,
   );
@@ -68,48 +79,68 @@ class FirebaseService {
       );
     }
     final options = Map<String, dynamic>.from(config[_platform] as Map);
-    if (Firebase.apps.isEmpty) {
-      await Firebase.initializeApp(
-        options: FirebaseOptions(
-          apiKey: options['apiKey'] as String,
-          appId: options['appId'] as String,
-          messagingSenderId: options['messagingSenderId'] as String,
-          projectId: options['projectId'] as String,
-          authDomain: options['authDomain'] as String?,
-          storageBucket: options['storageBucket'] as String?,
-          iosBundleId: options['iosBundleId'] as String?,
-        ),
-      );
-    }
+    _app = Firebase.apps.where((app) => app.name == appName).firstOrNull;
+    _app ??= await Firebase.initializeApp(
+      name: appName == defaultFirebaseAppName ? null : appName,
+      options: FirebaseOptions(
+        apiKey: options['apiKey'] as String,
+        appId: options['appId'] as String,
+        messagingSenderId: options['messagingSenderId'] as String,
+        projectId: options['projectId'] as String,
+        authDomain: options['authDomain'] as String?,
+        storageBucket: options['storageBucket'] as String?,
+        iosBundleId: options['iosBundleId'] as String?,
+      ),
+    );
     if (config['emulator'] == true) {
       const host = String.fromEnvironment(
         'FIREBASE_EMULATOR_HOST',
         defaultValue: '127.0.0.1',
       );
-      await FirebaseAuth.instance.useAuthEmulator(host, 9099);
-      db.useFirestoreEmulator(host, 8080);
+      if (!_emulatorsConnected) {
+        await auth.useAuthEmulator(
+          config['emulatorHost'] as String? ?? host,
+          config['authPort'] as int? ?? 9099,
+        );
+        db.useFirestoreEmulator(
+          config['emulatorHost'] as String? ?? host,
+          config['firestorePort'] as int? ?? 8080,
+        );
+        _emulatorsConnected = true;
+      }
     } else {
+      const requestedDebug = bool.fromEnvironment('APP_CHECK_DEBUG');
+      final debugWeb = kIsWeb && kDebugMode && requestedDebug;
+      final debugNative = kDebugMode || requestedDebug;
       final key = config['appCheckSiteKey'] as String? ?? '';
-      if (kIsWeb && key.isEmpty) {
+      if (kIsWeb && key.isEmpty && !debugWeb) {
         throw StateError(
           'Live sharing is unavailable in this browser. Local plans remain available.',
         );
       }
-      await FirebaseAppCheck.instance.activate(
-        providerWeb: kIsWeb ? ReCaptchaEnterpriseProvider(key) : null,
-        providerAndroid: kDebugMode
+      await FirebaseAppCheck.instanceFor(app: firebaseApp).activate(
+        providerWeb: kIsWeb
+            ? (debugWeb ? WebDebugProvider() : ReCaptchaEnterpriseProvider(key))
+            : null,
+        providerAndroid: debugNative
             ? const AndroidDebugProvider()
             : const AndroidPlayIntegrityProvider(),
-        providerApple: kDebugMode
+        providerApple: debugNative
             ? const AppleDebugProvider()
             : const AppleAppAttestProvider(),
       );
     }
-    if (FirebaseAuth.instance.currentUser == null) {
-      await FirebaseAuth.instance.signInAnonymously();
+    if (auth.currentUser == null) {
+      await auth.signInAnonymously();
     }
     modelName = config['cloudModel'] as String? ?? modelName;
-    final rc = FirebaseRemoteConfig.instance;
+    // Auth/Firestore test rooms never make production Remote Config/AI requests.
+    if (config['emulator'] == true) {
+      explanationsEnabled = false;
+      connected = true;
+      return;
+    }
+    final rc = FirebaseRemoteConfig.instanceFor(app: firebaseApp);
     await rc.setConfigSettings(
       RemoteConfigSettings(
         fetchTimeout: const Duration(seconds: 4),
@@ -370,9 +401,17 @@ class FirebaseService {
   }
 
   Future<Json> _generate(String prompt) async {
+    if (config['emulator'] == true) {
+      throw StateError(
+        'Cloud AI is unavailable in local emulator rooms. Manual preferences still work.',
+      );
+    }
     await connect();
-    final model = FirebaseAI.googleAI(useLimitedUseAppCheckTokens: true)
-        .generativeModel(
+    final model =
+        FirebaseAI.googleAI(
+          app: firebaseApp,
+          useLimitedUseAppCheckTokens: true,
+        ).generativeModel(
           model: modelName,
           generationConfig: GenerationConfig(
             temperature: 0.2,

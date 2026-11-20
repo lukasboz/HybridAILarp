@@ -30,9 +30,13 @@ bash scripts/flutter.sh pub get
 bash scripts/flutter.sh build ios --release --no-codesign
 ```
 
-For a device installation, configure your Apple team and signing in `app/ios/Runner.xcworkspace` (or the Xcode project when using Flutter’s Swift Package Manager integration), then run `flutter run` on the Mac or produce a signed development/ad-hoc/TestFlight build. Provisioning must match `app.meethalfway.mobile`. CI’s macOS job only creates an unsigned compile artifact; certificates, profiles and distribution are intentionally not invented or uploaded.
+The hosted macOS job has successfully compiled this app. For Linux device installation, download the `ios-development-unsigned-app` artifact and unpack `MeetHalfway-unsigned-app.tar.gz` into `artifacts/ios/`. Its tarball preserves framework symlinks and executable permissions. With a paired, unlocked iPhone connected:
 
-The Linux xtool installation and Darwin SDK are retained for the legacy SwiftUI app. They are not a supported substitute for Flutter’s Xcode pipeline. No native Flutter iPhone run has been claimed.
+```sh
+bash scripts/install-ios.sh
+```
+
+`xtool install` signs an already-compiled `.app` locally and installs it over USB. Compilation still happens on the hosted Mac; Apple credentials and signing keys are not uploaded. The existing account uses free provisioning. Follow any device trust/developer-mode prompts. `xtool` may adjust the bundle identifier for free provisioning; the Firebase iOS registration must match the final signed identifier. The helper leaves any certificate-revocation decision interactive. No signed installation or native iPhone run is claimed yet. Mac/Xcode development signing or TestFlight remain alternatives for distribution.
 
 ## Existing Firebase project
 
@@ -42,9 +46,17 @@ No new backend or Firebase project is required. Public client files are read fro
 - `native/android/app/google-services.json`: existing Android client with package `app.meethalfway.mobile`.
 - `native/ios/Resources/GoogleService-Info.plist`: existing iOS client with bundle `app.meethalfway.mobile`.
 
-The synchronizer translates these into platform-specific Flutter `FirebaseOptions`. Missing platform configuration keeps that platform’s manual/sample flow usable and reports live sharing as unavailable. Obtain client files through the Firebase console or authenticated CLI; they are public identifiers, not admin credentials. An authenticated CLI can list existing apps with `firebase apps:list --project meethalfway-2026-e43ca6` and retrieve their SDK configuration with `firebase apps:sdkconfig PLATFORM APP_ID --project meethalfway-2026-e43ca6`.
+The synchronizer translates these into platform-specific Flutter `FirebaseOptions`. Missing platform configuration keeps that platform’s manual/sample flow usable and reports live sharing as unavailable. After Firebase CLI sign-in, `node scripts/fetch-firebase-configs.mjs` retrieves and validates existing web/Android/iOS registrations without creating or deploying anything. Pass `--ios-bundle-id SIGNED_ID` when needed. These client identifiers are public; account credentials and App Check tokens must remain private.
 
-The production web App Check key is domain-restricted. Test live web AI on an allowed HTTPS origin; localhost requires a privately registered debug setup. Debug Android/iOS builds use SDK debug providers, and release builds use Play Integrity / App Attest. Never commit debug tokens. Emulator configuration bypasses App Check for local Auth/Firestore only; use `--dart-define=FIREBASE_EMULATOR_HOST=10.0.2.2` for an Android emulator. Cloud AI is not emulated.
+The production web App Check key is domain-restricted. Test live web AI on an allowed HTTPS origin; local debug web builds can explicitly select `--dart-define=APP_CHECK_DEBUG=true`. Debug Android/iOS builds use SDK debug providers. Normal release builds use Play Integrity / App Attest; CI's locally signed development iOS artifact explicitly opts into the debug provider with `APP_CHECK_DEBUG=true`, since Flutter device builds need AOT compilation and the current Apple account uses free provisioning. Register debug tokens privately. Do not distribute these development artifacts as production releases.
+
+The native SDK integration test uses independent Firebase apps against disposable local Auth/Firestore emulators. It skips production Remote Config and blocks cloud AI. With an Android emulator running:
+
+```sh
+bash scripts/test-flutter-firebase.sh
+```
+
+The default target is `emulator-5554`, with host `10.0.2.2`. Override `FLUTTER_TEST_DEVICE` / `FIREBASE_TEST_HOST` for another target. The wrapper starts and stops backend emulators; do not run it over an already-running emulator suite on the same ports. Android debug network policy permits cleartext only to local emulator addresses. The test passed on API 35 and wrote `app/build/integration_response_data.json`. It verifies anonymous identities, invitations, shared cards, host options, forged/stale vote rejection and unanimous confirmation. It does not establish production credentials, App Check attestation or model responses. Rebuild the normal app after testing before distributing an APK.
 
 The existing Firestore schema, authorization rules, eight-member cap, twelve host-option slots and atomic revision resets are unchanged. No rules or Remote Config deployment is part of this migration.
 

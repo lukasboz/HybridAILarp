@@ -20,15 +20,15 @@ Native Firebase registration files and App Check setup are needed for live servi
 
 ## iOS
 
-Flutter’s native app is `app/ios/`. Build with macOS and Xcode. The CI workflow includes a macOS unsigned compile job, but adding a workflow locally does not mean that job has run.
+Flutter’s native app is `app/ios/`. Build with macOS and Xcode. The hosted Mac [successfully compiled an arm64 app](https://github.com/lukasboz/HybridAILarp/actions/runs/44655868728). No local Mac is required for that workflow.
 
 ```sh
 bash scripts/flutter.sh build ios --release --no-codesign
 ```
 
-An unsigned app is not installable on an iPhone. Configure Apple development signing and the matching `app.meethalfway.mobile` provisioning identity for device installation. Native Firebase/App Check configuration is separate from signing. The connected iPhone was detected and paired on Linux at iOS 26.5; no native Flutter app has been installed or run there.
+The current workflow produces an unsigned AOT development app with an explicitly selected App Check debug provider. Download its artifact and unpack its tarball under `artifacts/ios/`, connect and unlock the paired phone, then run `bash scripts/install-ios.sh`. Linux `xtool install` signs the compiled app locally with the configured Apple account and installs over USB. Native Firebase/App Check configuration is separate from signing and must match the resulting bundle ID. The iPhone was previously detected and paired at iOS 26.5; no native Flutter app has been installed or run there yet.
 
-The installed Linux xtool/Darwin SDK supports the legacy SwiftUI package, not the Flutter Xcode runner. iPhone Safari can exercise the shared web build before a signed native build is available.
+The installed Linux xtool/Darwin SDK does not compile Flutter’s Xcode runner; this installation route uses the actual hosted Mac compilation. iPhone Safari can also exercise the shared web build.
 
 ## Visual consistency
 

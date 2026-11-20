@@ -1,0 +1,9 @@
+// The Flutter SDK is an included build with its own plugin repositories.
+// Resolve Kotlin dependencies from Maven Central as well as the plugin portal.
+gradle.beforeSettings { settings ->
+    settings.pluginManagement.repositories {
+        mavenCentral()
+        google()
+        gradlePluginPortal()
+    }
+}

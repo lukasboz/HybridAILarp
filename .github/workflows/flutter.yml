@@ -59,10 +59,11 @@ jobs:
           flutter-version: '3.50.1'
           channel: stable
           cache: true
-      - run: bash scripts/flutter.sh build ios --release --no-codesign
+      - name: Compile AOT development build for local signing
+        run: bash scripts/flutter.sh build ios --release --no-codesign --dart-define=APP_CHECK_DEBUG=true
       - name: Preserve app permissions and framework symlinks
         run: tar -C app/build/ios/iphoneos -czf app/build/ios/MeetHalfway-unsigned-app.tar.gz Runner.app
       - uses: actions/upload-artifact@v4
         with:
-          name: ios-unsigned-app
+          name: ios-development-unsigned-app
           path: app/build/ios/MeetHalfway-unsigned-app.tar.gz
