@@ -1,0 +1,49 @@
+{
+  "colors": {
+    "canvas": "#F3F8FC",
+    "surface": "#FFFFFF",
+    "ink": "#001B2E",
+    "secondary": "#38586F",
+    "accent": "#6279B8",
+    "accentSoft": "#DCECF6",
+    "border": "#C1DFF0",
+    "orb": "#C1DFF0",
+    "muted": "#48697E",
+    "surfaceTint": "#E9F3FA"
+  },
+  "sizes": {
+    "pageInset": 20,
+    "cardRadius": 20,
+    "controlRadius": 12,
+    "tileSize": 52,
+    "orbSize": 82,
+    "peopleRadius": 75,
+    "tabHeight": 59,
+    "sidebarWidth": 208,
+    "headingSize": 22,
+    "bodySize": 14,
+    "captionSize": 11
+  },
+  "tabs": [
+    {
+      "id": "home",
+      "label": "Discover",
+      "symbol": "sparkles"
+    },
+    {
+      "id": "plans",
+      "label": "My plans",
+      "symbol": "calendar"
+    },
+    {
+      "id": "preferences",
+      "label": "Preferences",
+      "symbol": "slider.horizontal.3"
+    },
+    {
+      "id": "privacy",
+      "label": "Privacy",
+      "symbol": "lock.shield"
+    }
+  ]
+}

@@ -6,7 +6,7 @@
 
 MeetHalfway turns a group’s separate preferences into a real shared decision. The first audience is Toronto friends, roommates and small social groups who want an inexpensive afternoon or evening together and have different budgets, interests, starting areas and energy levels. The primary outcome is a mutually accepted activity and a calendar invitation.
 
-The product earns its use of hybrid AI at the privacy boundary: a supported device interprets the person’s private explanation locally; the person approves an ordinary preference card; cloud AI helps explain the group shortlist using approved information. A person can participate entirely through manual controls when their hardware lacks local AI.
+The shared Flutter app uses optional cloud AI with explicit consent. A person may ask the model to draft a preference card from a note, edit it, then review exactly what is shared. Cloud shortlist explanations require separate consent. Manual controls and deterministic planning work without AI. Raw notes are not saved by MeetHalfway.
 
 ## Why someone would use it twice
 
@@ -24,7 +24,7 @@ The reason behind a budget never needs to enter the room. The budget amount itse
 
 ### My plans
 
-A warm, task-focused home screen presents active plans, a clear Make a plan action, a Join a plan action, and an explorable sample group. A forest-green identity, lime accents, large editorial headings and compact illustrations carry across desktop and mobile. The desktop has a stable sidebar; narrow screens use bottom navigation with reachable controls.
+A warm, task-focused home screen presents active plans, a clear Make a plan action, a Join a plan action, and an explorable sample group. A pale-blue canvas, ice-blue glass orb, activity-photo orbit and translucent controls follow Yumi’s web-dashboard design across desktop and mobile. The desktop has a stable sidebar; narrow screens use bottom navigation with reachable controls.
 
 Sample content is visibly labelled. It is an interaction sandbox, not evidence of live friends or actual AI requests.
 
@@ -40,7 +40,7 @@ Anonymous identity is convenient but lacks account recovery after browser data i
 
 The person selects a coarse Toronto neighbourhood, a hard spending ceiling, a hard travel limit, transport mode, available time range, interests, and any quiet/indoor/confirmed-step-free requirements. The private note is optional and memory-only. It is not stored in Firestore or local storage.
 
-On supported hardware, Firebase AI Logic extracts an editable card using only the local model. On unavailable hardware, the app explains the condition and keeps every manual control usable. It does not ask the person to sacrifice privacy to continue.
+After an explicit disclosure and affirmative consent, Firebase AI Logic can extract an editable card using a cloud model. Without that consent the note is not transmitted. Manual controls remain available. The Flutter client does not implement on-device inference.
 
 The review screen lists exactly what will be shared, including the budget amount and neighbourhood. Sharing is an affirmative action. Updating the card reopens the group decision and invalidates previous votes.
 
@@ -78,7 +78,7 @@ Changing a card, adding a person, or adding an activity reopens the decision. Th
 
 ### Make it happen
 
-A confirmed plan includes the day, Toronto local start time, venue, estimated cost and reminders to verify details or arrange booking. Calendar export includes the America/Toronto time zone and daylight-saving rules. Sharing uses the native share sheet in the SwiftUI and Compose apps, and browser sharing or clipboard on web.
+A confirmed plan includes the day, Toronto local start time, venue, estimated cost and reminders to verify details or arrange booking. Calendar export includes the America/Toronto time zone and daylight-saving rules. Flutter sharing integrations use available OS/browser share targets, with invitation copying as a fallback.
 
 There is no automatic reservation, payment, email, SMS or contact upload. Confirmation means the participants accepted a plan, not that a venue accepted a booking.
 
@@ -90,13 +90,13 @@ After a plan, the participant can ask for more like it or something different. T
 
 | Requirement | Acceptance condition |
 | --- | --- |
-| All three platforms | The same planning flow is available in Android, the xtool iPhone app and web. |
-| Private local inference | No request carrying a raw note may choose a cloud model or use cloud fallback. |
+| All three platforms | One Flutter implementation provides the same planning flow and visual controls on Android, iOS and web. Native iOS requires macOS/Xcode and signing. |
+| Explicit AI consent | Raw notes are sent to cloud AI only after a person accepts the disclosure; they are never persisted in app storage or Firestore. |
 | Sharing control | The exact allowlisted card is shown before publishing it. |
 | Group fairness | One member’s hard limit can exclude an option regardless of average fit. |
 | Consensus | A new proposal cannot inherit votes from an earlier revision. |
 | Source honesty | Sample, host-provided, estimated and unverified data remain labelled. |
-| Unsupported hardware | Manual preferences remain available and raw notes stay private. |
+| Manual participation | All preference controls and deterministic planning work without AI; an unsent note stays in the editor. |
 | AI honesty | A receipt appears only after a real inference response. |
 | Access control | Uninvited identities cannot read a planning room or forge another member’s vote. |
 | Accessibility | Keyboard focus, dialog focus trapping, semantic labels and reduced-motion styles support the primary flow. |

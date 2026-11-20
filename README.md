@@ -1,116 +1,66 @@
 # MeetHalfway
 
-**Private preferences. Fairer plans. Good times together.**
+**Good plans, together. One Flutter interface for web, Android and iOS.**
 
-MeetHalfway helps a group of 2–8 people choose a Toronto activity without an endless group chat. Each person reviews a preference card, the app excludes options that break anyone’s limits, and the group accepts a specific proposal before it becomes a plan.
+MeetHalfway helps a group choose an activity that respects everyone’s budget, travel limit, availability and interests. Its visual reference is [Yumi’s web dashboard](https://www.aarushagarwal.dev/projects/Yumi): a pale-blue canvas, translucent navigation, ice-blue glass orb, activity-photo orbit and floating composer.
 
-The repository contains a **native SwiftUI iPhone app**, a **native Jetpack Compose Android app**, and a responsive web app. The iPhone app builds as a Swift Package with **xtool on Linux**. All three follow one shared Yumi-inspired design contract and use the same Inter fonts, activity images, catalogue, navigation labels and planner fixtures. Each platform calls Firebase through its own SDK.
+The canonical application is **[`app/`](app/)**. All three platforms use the same Dart widgets, bundled Inter fonts, icons, photos, controls and planner. Layout changes depend on viewport size, not operating system. Phone navigation becomes a sidebar at 760 logical pixels. Cloud preference drafting and shortlist explanations require separate, explicit consent.
 
-**Live preview:** https://meethalfway-2026-e43ca6.web.app
+## Run
 
-The interface follows Yumi’s discovery design: white canvas, a translucent sidebar, purple glass orb, activity-photo orbit, participant bubbles and a floating plan composer. Phone layouts use a floating bottom navigation bar. Activity photos are illustrative; see [visual sources](docs/DESIGN.md).
+Use Flutter **3.50.1** (Dart 3.14), Python 3, and Java 21 plus an Android SDK for Android builds. The workspace’s Flutter, Java and Android tools are installed under ignored `.cache/`; the wrapper detects these, or uses Flutter on PATH.
 
-The new Firebase project is `meethalfway-2026-e43ca6`. All three apps are registered; anonymous Auth, Toronto Firestore, AI Logic, approved Remote Config defaults and Hosting are provisioned. Web reCAPTCHA Enterprise is domain-restricted, and AI Logic requires App Check. Live independent-user invitation, voting and confirmation checks and a real cloud response succeeded. Native device inference and an xtool build still need device evidence.
-
-## Run locally
-
-Use **Node 24.12 or newer**. On this Windows machine, nvm-windows is already installed:
-
-```powershell
-nvm install 24
-nvm use 24
-npm ci
-npm run dev
+```sh
+bash scripts/flutter.sh pub get
+bash scripts/flutter.sh run -d web-server --web-hostname 0.0.0.0 --web-port 4173
 ```
 
-Open **http://127.0.0.1:4173**. No Firebase account is needed to explore the sample group. Sample rooms are labelled as stored on this device and cannot invite real people on other devices.
+Open http://127.0.0.1:4173. Manual preferences, sample people and local plans work without Firebase configuration. Changes made in the old HTML/native implementations are not automatically imported into Flutter’s separate local storage.
 
-```text
-npm test
-npm run check
-npm run build
-npm run test:rules
+```sh
+bash scripts/flutter.sh analyze
+bash scripts/flutter.sh test
+bash scripts/flutter.sh build web --release --no-web-resources-cdn
+python3 scripts/package-flutter-web.py
+bash scripts/flutter.sh build apk --debug
 ```
 
-The rules command starts the official Firestore emulator using a disposable `demo-meethalfway` project. It requires Java 21+. Ordinary `npm test` skips emulator-dependent rules tests if the emulator is absent; it does not imply those rules passed. `npm run build` produces `dist/` and synchronizes native design tokens, catalogue data, photos and planner fixtures. Native screens are implemented in SwiftUI and Compose.
+The web build is packaged in `dist/`, retaining the existing Firebase Hosting target. The APK is `app/build/app/outputs/flutter-apk/app-debug.apk`. Root `npm run dev`, `build`, `check`, `test` and `build:android` invoke these Flutter workflows. `npm run preview` serves a packaged build on port 4173.
 
-## What works
+## What is implemented
 
-- Preference controls and a precise review-before-share boundary.
-- Private-note extraction wired to Firebase **only-on-device** inference, with no cloud fallback.
-- Honest capability detection and manual controls on unsupported devices.
-- Deterministic hard-constraint filtering and ranking by the lowest individual fit first.
-- A shortlist, an illustrative map, per-person travel estimates, and rejected-option explanations.
-- Clearly labelled Toronto sample options, plus host-provided activities for actual group decisions.
-- Live-room Firebase adapters: anonymous Auth, Firestore subscriptions, capability invitations, per-person votes, and revision-bound unanimous confirmation.
-- Optional Firebase AI Logic cloud explanations using only approved shared cards and eligible candidates.
-- Native sharing, calendar invitations in Toronto time, and local feedback for future preferences.
-- App Check integration and Remote Config defaults.
+- Responsive discovery dashboard with tappable activity orbit, sample participants and a plan composer.
+- Local plans, sample perspectives, manual preference editing and review before sharing.
+- Deterministic hard-limit filtering and ranking that prioritizes the least-satisfied person.
+- Host-provided activity options, rejected-option explanations, revision-bound voting and unanimous confirmation.
+- Firebase anonymous Auth, live Firestore rooms and invitations, App Check, Remote Config, and Firebase AI Logic adapters.
+- Explicitly approved cloud note-to-card drafting and optional cloud shortlist explanations. Raw notes are not saved by the app.
+- Calendar `.ics` sharing, invitation sharing/copying and local feedback for future preferences.
+- Contract tests against the original shared planner fixtures, consent tests and phone/desktop visual baselines.
 
-The catalogue is **not a live venue feed**. Sample prices, hours and access data are fixtures. Host-added options identify their source; travel remains an estimate from neighbourhood centres. The app makes no reservation and does not claim current TTC routes or availability.
+The twelve Toronto activities are **sample data**, not live discovery. Their photos, prices, hours, access and travel are illustrative or estimated. Learned account profiles, a friends graph, live event/venue search and multi-stop itineraries remain separate product work.
 
-## Firebase setup
+## Firebase
 
-This workspace is already configured. The following instructions are for a fresh checkout or a different project.
+`scripts/sync-flutter-assets.py` bundles public client configuration from the existing ignored web JSON, Android `google-services.json`, and iOS `GoogleService-Info.plist`. It generates ignored `app/assets/firebase.json`; source archives and CI builds without these files retain local/sample functionality.
 
-Complete Google sign-in yourself:
+The existing web public configuration has been recovered from the deployed app for this checkout. Native client configurations still require an authenticated Firebase CLI. Sign in, retrieve the existing registered Android/iOS client files into their documented paths, then rerun the wrapper. The registered package/bundle ID remains `app.meethalfway.mobile`. See [Flutter configuration and migration](docs/FLUTTER.md).
 
-```text
-npx -y firebase-tools@latest login
-```
+App Check’s production web key excludes localhost. Live AI on localhost needs a properly registered debug provider or a permitted HTTPS domain. Native debug App Check tokens must be registered privately. Never commit tokens or service-account credentials. No deployment or Firebase project changes are performed by the build.
 
-Then use the setup helper, which creates a Spark project when `--create` is provided, registers the three platform apps, retrieves native configurations via the CLI, and provisions AI Logic:
+## iPhone from Linux
 
-```text
-node scripts/configure-firebase.mjs --project YOUR_UNIQUE_PROJECT_ID --create
-```
+Flutter’s supported native iOS build requires **macOS and Xcode**. The existing SwiftUI/xtool package does not build Flutter’s engine, plugins or Xcode project. A plugged-in iPhone alone does not remove this requirement.
 
-The helper does not enable paid billing. It stops on failed commands. The current CLI asks you to select an app during AI Logic provisioning; choose MeetHalfway-Web. **`npx -y firebase-tools@latest init ailogic --project YOUR_PROJECT_ID` is required**; app registration alone does not provision AI Logic.
+[The CI workflow](.github/workflows/flutter.yml) includes a macOS unsigned iOS compile job. It has not been run from this local checkout. Installing on an iPhone needs a signed build with Apple development credentials; the unsigned CI artifact is not installable. The shared web build can be tested in iPhone Safari in the meantime.
 
-For web App Check, supply a reCAPTCHA Enterprise site key in the generated `web/firebase-config.local.json` and register the web app/provider in Firebase App Check. For local development, use the SDK’s debug provider with a privately registered debug token; never commit a debug token. Native development builds generate their own debug token. Register each token privately in Firebase App Check.
+## Repository layout
 
-Deploy after testing and App Check configuration:
+- `app/lib/`: canonical Flutter app, planner, state and Firebase adapters.
+- `app/android/`, `app/ios/`, `app/web/`: platform runners for that same UI.
+- `shared/`: source catalogue, design tokens and language-independent planner fixtures.
+- `scripts/flutter.sh`: asset synchronization and Flutter command wrapper.
+- `web/`, `native/`: retained legacy HTML, SwiftUI and Compose implementations for reference. They are not the Flutter app’s runtime.
+- `tests/`: legacy JavaScript/Swift contracts and Firestore rules tests. Use `npm run test:legacy` or `npm run test:rules` as appropriate.
 
-```text
-npm run build
-npx -y firebase-tools@latest deploy --only auth,firestore,hosting --project YOUR_PROJECT_ID
-```
-
-Review `remoteconfig.template.json` before deploying Remote Config separately. The installed Firebase skill requires explicit user review. The defaults in the current project were reviewed and approved on November 19, 2026.
-
-On localhost, the production reCAPTCHA key deliberately does not attest that domain. Sample rooms remain available. Test live web features on the hosted URL; keep any local debug-provider credentials private.
-
-## Android
-
-```text
-npm run build
-cd native/android
-./gradlew assembleDebug
-```
-
-On Windows, use `gradlew.bat`. Set `ANDROID_HOME` or create an ignored `local.properties` containing `sdk.dir`. The APK is `app/build/outputs/apk/debug/app-debug.apk`. A supported physical Android device is required to verify Gemini Nano; an emulator can still test manual preferences and group planning.
-
-## iPhone with xtool on Linux
-
-```text
-npm ci
-npm run build
-cd native/ios
-xtool dev
-```
-
-The Swift package uses `xtool.yml`, native SwiftUI components, iOS 26 Liquid Glass with a material fallback, bundled resources, and a `-ObjC` linker flag. It requires a properly configured xtool installation with Apple’s SDK and device pairing. See [platform details](docs/PLATFORMS.md), including the iOS 26 SDK compatibility pin and signed bundle-ID handling.
-
-The owner-ready `artifacts/MeetHalfway-xtool-configured.zip` includes the SwiftUI sources, shared design resources, fonts and public Firebase client identifiers. Extract it on Linux and run `xtool dev` after configuring the toolchain and device pairing. No Node build is needed for that export. Register the native SDK’s generated App Check debug token privately before cloud AI testing.
-
-**An iPhone 13 on iOS 26.3 can test the app and cloud features, but does not support Apple Intelligence.** The app reports this and keeps private preferences editable. Borrow a compatible Apple Intelligence device to verify the iOS on-device path. No local-model run is fabricated.
-
-## Product and submission material
-
-- [Complete product specification](docs/PRODUCT.md)
-- [Architecture and data boundaries](docs/ARCHITECTURE.md)
-- [Platform builds and verification](docs/PLATFORMS.md)
-- [Three-minute demo and judging strategy](docs/HACKATHON.md)
-- [Verification status](docs/VERIFICATION.md)
-
-This project uses the workflow patterns in the installed Firebase AI Logic, Authentication, Firestore, Security Rules, Remote Config and Hosting skills. It takes product inspiration from [Yumi](https://github.com/scrappydevs/Yumi); no Yumi source code or assets are incorporated.
+[Architecture](docs/ARCHITECTURE.md) · [Build platforms](docs/PLATFORMS.md) · [Verification](docs/VERIFICATION.md) · [Design sources](docs/DESIGN.md)

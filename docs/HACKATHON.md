@@ -1,3 +1,7 @@
+# Historical submission strategy
+
+This file records the earlier hybrid-AI design for the separate native clients. The canonical application has since migrated to Flutter and explicit opt-in cloud AI. Its current implementation does not include on-device model inference. The script and claims below are historical planning material, not evidence that the Flutter build satisfies any competition’s current rules. Reassess eligibility against the current official rules before using it.
+
 # Submission and demonstration strategy
 
 ## Positioning

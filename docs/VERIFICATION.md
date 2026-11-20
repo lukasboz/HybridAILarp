@@ -1,24 +1,28 @@
-# Verification status
+# Verification status — Flutter migration
 
-This file distinguishes implemented code, automated checks and device evidence. Update it after each additional verification step.
+The canonical application is now `app/`. Results below concern that application unless explicitly marked as legacy.
 
-| Area | Current evidence |
+| Area | Evidence |
 | --- | --- |
-| Constraint engine | Fifteen Node tests passed, including privacy payload allowlisting, infeasible schedules, accessibility, host activities and stale votes. |
-| Web interface | Two DOM integration tests pass after the Yumi-style redesign, including the orbit, safe plan-composer prefill, room creation, card review, host activity entry, three-person consensus and feedback. A Happy DOM select-parser bug was reproduced independently and normalized in the test harness. |
-| Firestore rules | Twelve emulator tests passed, including all-eight-member consensus and bounded host activity rules. |
-| JavaScript syntax | Source modules passed syntax checks. |
-| Bundle build | Web and native resource distributions generated successfully. |
-| Android | Native Jetpack Compose app compiles with Firebase Auth, Firestore, Remote Config, AI Logic and App Check. `assembleDebug` succeeded. Three JVM tests pass, including seven shared planner fixtures, card privacy validation and revision-bound unanimous confirmation. Native runtime visuals/local inference remain unverified. |
-| iOS | Native SwiftUI screens and Firebase Swift repositories authored. Swift 6.2.3 on Linux parses all Swift sources and compiles/runs planner, privacy and calendar contract checks. This is not an iOS SDK type-check or linked xtool build. User’s iPhone 13 / iOS 26.3 still needs installation testing. |
-| Shared native design | JSON tokens generate Swift, Kotlin and CSS constants. Identical Inter fonts, catalogue and activity photos are bundled for all three platforms. Native screen parity requires device screenshots. |
-| Local inference | SDK paths implemented. No successful local inference run has been observed in this session. |
-| Cloud inference | Real `gemini-3.8-flash` responses through the JavaScript Firebase AI Logic SDK passed product output validation for three candidates. Tests used synthetic approved cards and a private temporary App Check debug token, revoked afterward. The new native SDK adapters still need runtime verification. |
-| Live room backend | Three independent anonymous SDK clients verified atomic creation, invitation joining, approved-card writes, membership queries, live vote subscription, confirmation after both yes votes, denial of early confirmation, outsider room access and invitation enumeration. This is a live service test, not a physical multi-device demonstration. |
-| App Check | Domain-restricted reCAPTCHA Enterprise registered for both Hosting domains. Firebase AI Logic enforcement is `ENFORCED`. Native debug-token registration and production native attestation need actual device/signing information. The reCAPTCHA browser exchange has not yet been observed manually. |
-| Remote Config | User-approved defaults deployed: cloud model `gemini-3.8-flash`, cloud explanations enabled, maximum group size 8. |
-| Visual QA | Yumi-inspired Discover and sample planning room inspected in an isolated Edge window. Discover also inspected at a 390 × 844 responsive viewport; orbit, composer and floating navigation fit. Physical native layout remains unverified. |
-| Cloud native QA attempt | Firebase Test Lab APIs and virtual phone catalogue were accessible. APK upload returned a billing-account-absent error. No test matrix was submitted, no native screenshots were obtained, and billing stayed unlinked. |
-| Production deployment | Auth, tested Firestore rules, Remote Config and Hosting deployed to `meethalfway-2026-e43ca6`. Public page and bundle returned HTTP 200. Billing was not linked. |
+| Static analysis | `bash scripts/flutter.sh analyze`: no issues. |
+| Flutter tests | 21 tests passed in a normal run after baseline generation. |
+| Planner parity | Seven Dart cases match the original shared JavaScript rankings and scores exactly: sample, zero budget, quiet/indoors, confirmed access, no overlap, missing card and walking. |
+| Domain boundaries | Tests reject private-note fields and invalid cards, require exact-revision unanimous consent, enforce host-option constraints and check calendar rollover/escaping. |
+| State | Tests exercise three-person consensus, preference updates invalidating votes/proposals, local persistence and switching sample perspectives. |
+| UI flow | Widget tests exercise composer-to-local-plan creation and a sample group from proposal through discussion, all three votes, confirmation and calendar availability. |
+| Cloud consent | A recording adapter verifies no note request before consent or after cancellation, one request after approval, and no raw-note canary in saved preferences. This is a consent test, not a live model response. |
+| Visual baselines | Updated to navy `#001B2E`, periwinkle `#6279B8` and ice blue `#C1DFF0`, including matching platform app icons and launch backgrounds. Bundled Inter and Material icon fonts plus predecoded photographs. Android and iOS target-platform settings match the same 390×844 phone baseline. A 1440×1000 desktop baseline and phone room baseline are also checked. These are widget renderer tests, not physical device screenshots. |
+| Accessibility layout | 320×640 phone with 1.5× text scaling passes without layout overflow; navigation remains usable. Reduced-motion disables orb breathing. |
+| Android | `build apk --debug` succeeds with the local Android SDK and complete Java 21 JDK. The debug APK is packaged under `artifacts/`. No Android device/emulator runtime has been inspected in this migration. |
+| Web | Release web build succeeds, including the Wasm compatibility dry run. It is packaged in `dist/`; the HTTP preview on port 4173 serves the Flutter bootstrap successfully. |
+| Browser walkthrough | Attempted through the cloud-desktop skill. CUA returned no browsers and `The browser access host is unavailable`. No live browser walkthrough or browser screenshot is claimed. Generated widget screenshots were visually inspected. |
+| iPhone connection | USB device detected and pairing validated, iOS 26.5. This establishes connectivity, not a Flutter app installation. |
+| Native iOS | Standard Flutter runner and macOS CI compile job prepared. No native Flutter iOS build, signed installation or runtime has been verified. Requires macOS/Xcode and Apple signing. |
+| Firebase client config | Existing public web client configuration recovered from the deployed app. Native client retrieval was attempted; Firebase CLI reported `Failed to authenticate, have you run firebase login?`. Native sample/manual mode remains available. |
+| Flutter live services | Firebase Auth/Firestore/App Check/Remote Config/AI Logic adapters compile for Android and web. Live Flutter room/model requests are not verified. Production web App Check excludes localhost, and native configuration/debug tokens still need setup. |
+| Firestore rules | Unchanged by migration. The retained legacy emulator suite previously passed 12 tests; it was not rerun during this migration. That history is not new Flutter service evidence. |
+| Production | No Flutter deployment, rules deployment, Remote Config change, hosted CI run, signing-key upload or billing change performed. The existing public Hosting deployment is still the earlier client until separately deployed. |
 
-The source includes a deployed web app, compiled Android app, live-service verification and an xtool iOS source package. Seventeen domain/interface tests pass in the current ordinary test run; twelve unchanged rules tests passed separately in the Firestore emulator. Hardware and signing work remains before claiming a verified three-platform submission. No local-model run or successful iOS build is claimed.
+The former HTML client’s 17 passing domain/UI tests, historical live Firebase tests, native Compose compile and Swift planner checks remain useful prior evidence. They do not establish a working native Flutter iPhone build or real Flutter inference.
+
+Remaining product scope includes live activity/event sourcing, persistent learned accounts, friends/review history, multi-stop planning, retention/deletion controls and production service review. The catalogue remains labelled sample data. Flutter uses consent-based cloud AI; the legacy local-only inference implementation is not part of its runtime.

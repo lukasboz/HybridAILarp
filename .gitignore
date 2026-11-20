@@ -25,3 +25,8 @@ native/ios/Resources/NativeConfig.plist
 *.ipa
 *.apk
 *.keystore
+
+# Generated Flutter public Firebase configuration
+app/assets/firebase.json
+app/test/failures/
+__pycache__/

@@ -1,75 +1,37 @@
-# Platform build and verification notes
+# Platform builds
 
-## Shared design, native interfaces
-
-The iPhone interface is SwiftUI, Android is Jetpack Compose, and web is HTML/CSS. They share generated design tokens, identical Inter font files, activity photographs, catalogue data and seven planner fixtures. Swift and Kotlin implement the deterministic planning algorithm and match the web-generated expected rankings. All three use their platform Firebase SDK for Auth, Firestore, App Check, Remote Config and AI Logic.
-
-The web version can be installed as a PWA. A PWA running in Safari on an iPhone is not a substitute for the native Apple local-model integration.
-
-## Android
-
-The Android project targets SDK 35, supports API 26+, and uses Java 17 bytecode. Build with a recent JDK such as 21 and the standard Gradle wrapper:
-
-```sh
-npm ci
-npm run build
-cd native/android
-./gradlew assembleDebug
-```
-
-On Windows, use `gradlew.bat`. Supply `ANDROID_HOME` or an ignored `local.properties`. `google-services.json` is retrieved by the Firebase setup helper. Without configuration the app can run its manual sample flow; Firebase-dependent requests report an unavailable state.
-
-The Android app uses native Compose screens, a native Firebase repository and system sharing. Calendar files are shared through a bounded FileProvider cache directory. External HTTPS venue links open in the system browser. Debug App Check is enabled only for debug builds; release builds use Play Integrity. Backup is disabled.
-
-Gemini Nano requires supported physical hardware and a downloaded model. An ordinary emulator is useful for layout, navigation and group-flow testing, but cannot establish that the on-device model works.
-
-## iPhone: xtool on Linux
-
-Install and configure xtool using its [Linux/Windows guide](https://github.com/xtool-org/xtool/blob/main/Documentation/xtool.docc/Installation-Linux.md). This repository does not install a system Swift toolchain, Apple SDK, USB driver or signing credentials for you.
-
-```sh
-npm ci
-npm run build
-cd native/ios
-xtool dev
-```
-
-`Package.swift` defines a dynamic Swift package product; `xtool.yml` supplies bundle identity and top-level resources. No `.xcodeproj`, CocoaPods or Ruby manipulation is used. The resource build happens on any host with Node; signing, installation and runtime verification happen on your xtool Linux host with your plugged-in iPhone.
-
-The app bundles `Resources/Shared/`, `Resources/Fonts/` and `Resources/NativeConfig.plist`. The shared-resource build generates the catalogue and copies the photos and fonts; the configured xtool archive already includes them. An empty native config supports the sample/manual UI. A real native config comes from the registered Firebase iOS app’s CLI output. Firebase’s `-ObjC` linker setting is included.
-
-### iOS 26 compatibility decision
-
-Firebase **12.19.3**, the newest published 12.x patch observed during this work, retains the iOS 26 `FirebaseAI.SystemLanguageModel` and `generativeModelSession` APIs. Firebase 13.2’s newer integration uses the iOS 27 Foundation Models model protocol. This project therefore pins the compatible 12.19.3 package for the specified iOS 26.3 target. The pin is deliberate and must not be replaced by a major-version range without migrating the adapter.
-
-Source evidence: [12.19.3 system model wrapper](https://github.com/firebase/firebase-ios-sdk/blob/12.19.3/FirebaseAI/Sources/Types/Public/SystemLanguageModel.swift), [13.2 integration](https://github.com/firebase/firebase-ios-sdk/blob/13.2.0/FirebaseAI/Sources/Extensions/Public/FirebaseAI%2BGeminiLanguageModel.swift), and the [Firebase iOS hybrid guide](https://firebase.google.com/docs/ai-logic/hybrid/ios/get-started).
-
-The Swift compiler must include the relevant Apple SDK and support at least Swift 6.2.3. Follow xtool’s current toolchain requirements. The Firebase 12.x local-model wrappers are compile-gated by compiler and platform support.
-
-### Your iPhone 13
-
-Your iPhone 13 with iOS 26.3 can exercise installation, the SwiftUI interface, private manual controls, live-room synchronization, cloud explanations, native sharing and calendar sharing. It cannot run Apple Intelligence. The app displays that limitation and never silently uploads a private note.
-
-Borrow a supported Apple Intelligence device to verify and record the iOS local-model path. [Apple’s device requirements](https://support.apple.com/en-us/121115) identify eligible hardware.
-
-### Signing and bundle identifiers
-
-xtool may prefix the signed bundle ID when using free provisioning. Register that exact signed bundle ID for the final Firebase iOS app and App Check configuration. The setup helper accepts `--ios-bundle-id`. Do not treat a base-ID debug build as proof that production App Attest will work with a differently signed identifier.
-
-### xtool dependency risks
-
-Firebase includes dependencies that may exercise xtool/SwiftPM support for Apple frameworks. Current upstream issues describe differences between toolchain versions. Avoid claiming an iOS build succeeded until `xtool dev` completes on the actual Linux host and the installed app is opened. If framework resolution fails, capture the exact error and tool versions; do not replace the native Firebase adapter with a web-only claim of equivalent local execution.
+The active UI is Flutter for all three targets. The old SwiftUI, Compose and HTML clients are retained reference implementations.
 
 ## Web
 
-`npm run dev` serves the development app at http://127.0.0.1:4173. `npm run build` generates a standalone static distribution at `dist/`. `node scripts/serve.mjs --dist` can serve that output.
+Run `bash scripts/flutter.sh run -d web-server --web-hostname 0.0.0.0 --web-port 4173` or build with `npm run build`. Flutter compiles into `app/build/web`; the packaging helper copies it to `dist/` for the existing Firebase Hosting target. No deployment is performed by building. The first web load requires network access; a new offline asset cache is not part of this migration.
 
-The local AI path uses supported Chrome desktop hardware and Firebase’s `ONLY_ON_DEVICE` mode. It checks model availability, initializes the device model after a user action, and awaits the actual inference result. Firefox, Safari and unsupported Chromium devices retain manual controls and disclosed cloud explanation features.
+## Android
 
-HTTPS or localhost is required for web local AI, clipboard and service-worker behavior. The production web app needs its Firebase configuration and App Check site key. Native apps share invitations using the public Hosting URL. A recipient can join on web or paste the invitation into either native app.
+Use a complete Java 21 JDK, Android platform 36, Flutter 3.50.1 and the standard generated Gradle runner. The workspace wrapper detects the tools installed in `.cache/`.
 
-## Native verification
+```sh
+bash scripts/flutter.sh build apk --debug
+```
 
-The Compose app compiles and its three JVM tests pass: seven planner scenarios match web, private-note/invalid card fields are rejected, and confirmation requires current unanimous votes. Swift 6.2.3 on Linux parses the SwiftUI sources and compiles/runs the Foundation planner contract checks. This is not an iOS SDK type-check, linked iOS app build, installation or native screenshot verification.
+APK: `app/build/app/outputs/flutter-apk/app-debug.apk`. Package: `app.meethalfway.mobile`. An Android emulator can validate the app without a physical phone; actual native screenshots must still be collected. Release signing is separate from the generated development/debug configuration.
 
-A no-cost Firebase Test Lab attempt reached device selection, but APK upload was rejected because the storage project has no billing account. No billing was linked. Native visual QA still requires an actual device, configured emulator, or an available cloud test upload path.
+Native Firebase registration files and App Check setup are needed for live services. Manual/sample plans work without them. The Flutter implementation uses opt-in cloud AI and does not require Gemini Nano hardware.
+
+## iOS
+
+Flutter’s native app is `app/ios/`. Build with macOS and Xcode. The CI workflow includes a macOS unsigned compile job, but adding a workflow locally does not mean that job has run.
+
+```sh
+bash scripts/flutter.sh build ios --release --no-codesign
+```
+
+An unsigned app is not installable on an iPhone. Configure Apple development signing and the matching `app.meethalfway.mobile` provisioning identity for device installation. Native Firebase/App Check configuration is separate from signing. The connected iPhone was detected and paired on Linux at iOS 26.5; no native Flutter app has been installed or run there.
+
+The installed Linux xtool/Darwin SDK supports the legacy SwiftUI package, not the Flutter Xcode runner. iPhone Safari can exercise the shared web build before a signed native build is available.
+
+## Visual consistency
+
+Shared fonts, icons, control theme and painted glass avoid platform-specific UI substitutions. The viewport selects sidebar versus bottom navigation. Widget golden tests compare both iOS and Android target-platform settings to the same phone baseline and also cover desktop. These are renderer tests, not physical cross-device screenshots. Text scaling and narrow layouts are tested without disabling accessibility.
+
+See [Flutter migration and configuration](FLUTTER.md) for full setup, data boundaries and remaining limits.
