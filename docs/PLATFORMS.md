@@ -20,7 +20,7 @@ Native Firebase registration files and App Check setup are needed for live servi
 
 ## iOS
 
-Flutter’s native app is `app/ios/`. Build with macOS and Xcode. The hosted Mac [successfully compiled an arm64 app](https://github.com/lukasboz/HybridAILarp/actions/runs/44655868728). No local Mac is required for that workflow.
+Flutter’s native app is `app/ios/`. Build with macOS and Xcode. The hosted Mac [successfully compiled an arm64 development app](https://github.com/lukasboz/HybridAILarp/actions/runs/44657697039). No local Mac is required for that workflow.
 
 ```sh
 bash scripts/flutter.sh build ios --release --no-codesign

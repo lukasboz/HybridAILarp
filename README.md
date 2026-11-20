@@ -50,7 +50,7 @@ App Check’s production web key excludes localhost. Live AI on localhost needs 
 
 ## iPhone from Linux
 
-Flutter’s native iOS compilation requires **macOS and Xcode**, supplied here by GitHub’s hosted Mac runner. An [actual hosted build](https://github.com/lukasboz/HybridAILarp/actions/runs/44655868728) compiled the arm64 app successfully.
+Flutter’s native iOS compilation requires **macOS and Xcode**, supplied here by GitHub’s hosted Mac runner. The [hosted workflow](https://github.com/lukasboz/HybridAILarp/actions/runs/44657697039) passed web verification, Android compilation and the arm64 iOS development build.
 
 [The CI workflow](.github/workflows/flutter.yml) produces an unsigned development artifact. Download it and unpack its tarball to `artifacts/ios/`, then connect and unlock a paired iPhone and run `bash scripts/install-ios.sh`. `xtool` signs the existing app locally with the configured Apple account before installing; Apple credentials stay off the hosted runner. Device installation is still pending. The development artifact explicitly uses App Check’s debug provider, whose token needs private registration before live services work.
 
