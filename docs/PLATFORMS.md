@@ -26,7 +26,7 @@ Flutter’s native app is `app/ios/`. Build with macOS and Xcode. The hosted Mac
 bash scripts/flutter.sh build ios --release --no-codesign
 ```
 
-The current workflow produces an unsigned AOT development app with an explicitly selected App Check debug provider. Download its artifact and unpack its tarball under `artifacts/ios/`, connect and unlock the paired phone, then run `bash scripts/install-ios.sh`. Linux `xtool install` signs the compiled app locally with the configured Apple account and installs over USB. Native Firebase/App Check configuration is separate from signing and must match the resulting bundle ID. The iPhone was previously detected and paired at iOS 26.5; no native Flutter app has been installed or run there yet.
+The current workflow produces an unsigned AOT development app with an explicitly selected App Check debug provider. Download its artifact and unpack its tarball under `artifacts/ios/`, connect and unlock the paired phone, then run `bash scripts/install-ios.sh`. The helper refreshes its public Firebase asset; Linux `xtool install` signs and installs it with the configured Apple account. Installation succeeded on the iOS 26.5 phone, and the user confirmed that the dashboard opens after trusting their development certificate. The later Firebase-configured update is pending a host USB protocol/configuration error. Native Firebase/App Check configuration must match the resulting signed bundle ID; the separate development registration now does.
 
 The installed Linux xtool/Darwin SDK does not compile Flutter’s Xcode runner; this installation route uses the actual hosted Mac compilation. iPhone Safari can also exercise the shared web build.
 

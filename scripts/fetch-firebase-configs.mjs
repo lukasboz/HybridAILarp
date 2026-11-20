@@ -51,8 +51,8 @@ function pick(platform,predicate){
   return chosen;
 }
 const web=pick('WEB',app=>app.appId===previous.firebase?.appId||app.displayName==='MeetHalfway-Web');
-const android=pick('ANDROID',app=>app.packageName===packageName);
-const ios=pick('IOS',app=>app.bundleId===bundle);
+const android=pick('ANDROID',app=>app.packageName===packageName||app.namespace===packageName);
+const ios=pick('IOS',app=>app.bundleId===bundle||app.namespace===bundle);
 const webResult=firebase(['apps:sdkconfig','WEB',web.appId]);
 const webConfig=typeof webResult.sdkConfig==='object'?webResult.sdkConfig:JSON.parse(configText(webResult));
 const androidText=configText(firebase(['apps:sdkconfig','ANDROID',android.appId]));

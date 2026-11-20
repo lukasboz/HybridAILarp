@@ -33,9 +33,14 @@ class PlanExplanation {
 }
 
 class FirebaseService {
-  FirebaseService(this.config, {this.appName = defaultFirebaseAppName});
+  FirebaseService(
+    this.config, {
+    this.appName = defaultFirebaseAppName,
+    this.appCheckDebugToken,
+  });
   final Json config;
   final String appName;
+  final String? appCheckDebugToken;
   FirebaseApp? _app;
   bool _emulatorsConnected = false;
   Future<void>? _connecting;
@@ -123,10 +128,10 @@ class FirebaseService {
             ? (debugWeb ? WebDebugProvider() : ReCaptchaEnterpriseProvider(key))
             : null,
         providerAndroid: debugNative
-            ? const AndroidDebugProvider()
+            ? AndroidDebugProvider(debugToken: appCheckDebugToken)
             : const AndroidPlayIntegrityProvider(),
         providerApple: debugNative
-            ? const AppleDebugProvider()
+            ? AppleDebugProvider(debugToken: appCheckDebugToken)
             : const AppleAppAttestProvider(),
       );
     }

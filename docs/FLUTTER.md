@@ -36,7 +36,7 @@ The hosted macOS job has successfully compiled this app. For Linux device instal
 bash scripts/install-ios.sh
 ```
 
-`xtool install` signs an already-compiled `.app` locally and installs it over USB. Compilation still happens on the hosted Mac; Apple credentials and signing keys are not uploaded. The existing account uses free provisioning. Follow any device trust/developer-mode prompts. `xtool` may adjust the bundle identifier for free provisioning; the Firebase iOS registration must match the final signed identifier. The helper leaves any certificate-revocation decision interactive. No signed installation or native iPhone run is claimed yet. Mac/Xcode development signing or TestFlight remain alternatives for distribution.
+The helper refreshes the compiled `.app`'s public Firebase JSON asset before `xtool install` signs and installs it over USB. Compilation still happens on the hosted Mac; Apple credentials and signing keys are not uploaded. The existing account uses free provisioning, which produces a signed identifier with an `XTL-TEAMID.` prefix. A separate development Firebase iOS app now matches the observed signed identifier. The first installation succeeded and the user confirmed the dashboard opens after trusting their development certificate in Settings. Its later Firebase-configured update is pending recovery from the host's USB configuration error. The helper leaves any certificate-revocation decision interactive. Mac/Xcode development signing or TestFlight remain alternatives for distribution.
 
 ## Existing Firebase project
 
@@ -59,6 +59,16 @@ bash scripts/test-flutter-firebase.sh
 The default target is `emulator-5554`, with host `10.0.2.2`. Override `FLUTTER_TEST_DEVICE` / `FIREBASE_TEST_HOST` for another target. The wrapper starts and stops backend emulators; do not run it over an already-running emulator suite on the same ports. Android debug network policy permits cleartext only to local emulator addresses. The test passed on API 35 and wrote `app/build/integration_response_data.json`. It verifies anonymous identities, invitations, shared cards, host options, forged/stale vote rejection and unanimous confirmation. It does not establish production credentials, App Check attestation or model responses. Rebuild the normal app after testing before distributing an APK.
 
 The existing Firestore schema, authorization rules, eight-member cap, twelve host-option slots and atomic revision resets are unchanged. No rules or Remote Config deployment is part of this migration.
+
+An additional native connection test is explicitly gated behind `RUN_FIREBASE_LIVE_TEST=true`. It uses the configured real project and requires `FIREBASE_TEST_DEBUG_TOKEN` from a privately registered App Check token. Supply both through an ignored, permission-restricted Dart define file:
+
+```sh
+bash scripts/flutter.sh drive --driver=test_driver/firebase_flow_driver.dart \
+  --target=integration_test/firebase_live_test.dart -d emulator-5554 --no-dds \
+  --dart-define-from-file=/absolute/path/to/private-test-defines.json
+```
+
+This test passed for Android anonymous Auth, a valid App Check token and server-backed approved-card writes/reads. Its optional `RUN_FIREBASE_AI_TEST=true` path also passed against `gemini-3.8-flash`, sending synthetic preferences and validating the returned draft. The report contains the temporary room, member and invite paths; remove those synthetic documents with authenticated administrative tooling after the test. Both verified runs' records were removed. Never package the test APK or its private defines; rebuild the normal application afterward. Ordinary unit tests and the demo emulator suite do not run this production test.
 
 ## AI consent and storage
 

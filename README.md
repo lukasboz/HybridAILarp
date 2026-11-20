@@ -44,7 +44,7 @@ The twelve Toronto activities are **sample data**, not live discovery. Their pho
 
 `scripts/sync-flutter-assets.py` bundles public client configuration from the existing ignored web JSON, Android `google-services.json`, and iOS `GoogleService-Info.plist`. It generates ignored `app/assets/firebase.json`; source archives and CI builds without these files retain local/sample functionality.
 
-The existing web public configuration has been recovered from the deployed app for this checkout. Native client configurations still require Firebase authentication. After signing into the CLI, run `node scripts/fetch-firebase-configs.mjs` to retrieve existing registrations into the ignored paths, then rerun the Flutter wrapper. Android uses `app.meethalfway.mobile`; the iOS registration must match the final signed identifier. See [Flutter configuration and migration](docs/FLUTTER.md).
+This checkout has authenticated Firebase access and the native client configurations have been retrieved through the official plugin into ignored files. Android uses `app.meethalfway.mobile`. Apple free provisioning prefixes the installed iPhone identifier, so a separate development iOS registration matches that signed identity. For another checkout, sign in and run `node scripts/fetch-firebase-configs.mjs --ios-bundle-id SIGNED_ID` to retrieve existing registrations. See [Flutter configuration and migration](docs/FLUTTER.md).
 
 App Check’s production web key excludes localhost. Live AI on localhost needs a properly registered debug provider or a permitted HTTPS domain. Native debug App Check tokens must be registered privately. Never commit tokens or service-account credentials. No deployment or Firebase project changes are performed by the build.
 
@@ -52,7 +52,7 @@ App Check’s production web key excludes localhost. Live AI on localhost needs 
 
 Flutter’s native iOS compilation requires **macOS and Xcode**, supplied here by GitHub’s hosted Mac runner. The [hosted workflow](https://github.com/lukasboz/HybridAILarp/actions/runs/44657697039) passed web verification, Android compilation and the arm64 iOS development build.
 
-[The CI workflow](.github/workflows/flutter.yml) produces an unsigned development artifact. Download it and unpack its tarball to `artifacts/ios/`, then connect and unlock a paired iPhone and run `bash scripts/install-ios.sh`. `xtool` signs the existing app locally with the configured Apple account before installing; Apple credentials stay off the hosted runner. Device installation is still pending. The development artifact explicitly uses App Check’s debug provider, whose token needs private registration before live services work.
+[The CI workflow](.github/workflows/flutter.yml) produces an unsigned development artifact. Download it and unpack its tarball to `artifacts/ios/`, then connect and unlock a paired iPhone and run `bash scripts/install-ios.sh`. The helper refreshes its public Firebase data asset, and `xtool` signs the app locally before installing; Apple credentials stay off the hosted runner. Installation succeeded and the user confirmed that the dashboard opens after trusting their development certificate. The subsequent Firebase-configured update is pending recovery from a Linux USB configuration error. The development artifact uses App Check’s debug provider, whose device token needs private registration for protected services.
 
 ## Repository layout
 
