@@ -221,7 +221,26 @@ void main() {
       await tapKey('confirm-plan');
       expect(store.room!.status, 'confirmed');
       expect(find.text('Add to calendar'), findsOneWidget);
+      expect(find.text('Share the plan'), findsOneWidget);
+      await tapKey('details-${store.ranked.first.candidate.id}');
+      expect(find.byKey(const Key('propose-plan')), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );
+  testWidgets('system Back leaves a plan before leaving the app', (
+    tester,
+  ) async {
+    await open(tester, const Size(390, 844));
+    await tester.tap(find.byKey(const Key('explore-sample')));
+    await tester.pumpAndSettle();
+    expect(store.room, isNotNull);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(store.room, isNull);
+    expect(store.tab, 'plans');
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(store.tab, 'discover');
+    expect(tester.takeException(), isNull);
+  });
 }

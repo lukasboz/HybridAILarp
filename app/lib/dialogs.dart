@@ -8,6 +8,7 @@ import 'design.dart';
 import 'domain.dart';
 import 'orbit.dart';
 import 'store.dart';
+import 'travel_map.dart';
 
 class PlanDialog extends StatelessWidget {
   const PlanDialog({
@@ -106,7 +107,8 @@ class _CreatePlanDialogState extends State<CreatePlanDialog> {
     text: widget.store.name == 'You' ? '' : widget.store.name,
   );
   String date = nextSaturday();
-  bool live = false, working = false;
+  late bool live = widget.store.cloud.configured;
+  bool working = false;
   @override
   void dispose() {
     title.dispose();
@@ -158,10 +160,11 @@ class _CreatePlanDialogState extends State<CreatePlanDialog> {
           onPressed: working
               ? null
               : () async {
+                  final now = DateTime.now();
                   final chosen = await showDatePicker(
                     context: context,
                     initialDate: DateTime.parse(date),
-                    firstDate: DateTime(2020),
+                    firstDate: DateTime(now.year, now.month, now.day),
                     lastDate: DateTime(2100),
                   );
                   if (chosen != null && mounted) {
@@ -184,15 +187,26 @@ class _CreatePlanDialogState extends State<CreatePlanDialog> {
               style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
             ),
             subtitle: Text(
-              live
+              !widget.store.cloud.configured
+                  ? 'Live sharing isn’t set up in this build. This plan stays on this device.'
+                  : live
                   ? 'A live plan shared through an invitation link.'
                   : 'Off: this plan stays on this device.',
               style: const TextStyle(fontSize: 11, color: MH.secondary),
             ),
             value: live,
-            onChanged: working ? null : (v) => setState(() => live = v),
+            onChanged: working || !widget.store.cloud.configured
+                ? null
+                : (v) => setState(() => live = v),
           ),
         ),
+        if (live) ...[
+          const SizedBox(height: 10),
+          const Text(
+            'Anyone with the link can join for seven days, up to eight people. Everyone in the plan sees the names and preference cards that are shared.',
+            style: TextStyle(fontSize: 11, color: MH.secondary, height: 1.6),
+          ),
+        ],
         const SizedBox(height: 22),
         FilledButton.icon(
           key: const Key('create-plan'),
@@ -262,6 +276,11 @@ class _JoinPlanDialogState extends State<JoinPlanDialog> {
           controller: name,
           maxLength: 30,
           decoration: const InputDecoration(labelText: 'Your first name'),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Everyone in the plan sees your first name and any preference card you share. Plans hold up to eight people.',
+          style: TextStyle(fontSize: 11, color: MH.secondary, height: 1.6),
         ),
         const SizedBox(height: 20),
         FilledButton(
@@ -352,7 +371,6 @@ class _PreferencesEditorState extends State<PreferencesEditor> {
           .showSnackBar(SnackBar(content: Text(friendlyError(error))));
       return;
     }
-    note.clear();
     final accepted = await showDialog<bool>(
       context: context,
       builder: (context) => PlanDialog(
@@ -364,6 +382,19 @@ class _PreferencesEditorState extends State<PreferencesEditor> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             cardSummary(card, widget.store),
+            if (widget.store.room?.proposal != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                widget.store.room!.status == 'confirmed'
+                    ? 'This plan is confirmed. Sharing a changed card reopens the decision, and everyone will need to agree again.'
+                    : 'Sharing a changed card reopens the decision and clears the current votes.',
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: MH.secondary,
+                  height: 1.6,
+                ),
+              ),
+            ],
             const SizedBox(height: 20),
             FilledButton(
               key: const Key('approve-card'),
@@ -378,6 +409,7 @@ class _PreferencesEditorState extends State<PreferencesEditor> {
         ),
       ),
     );
+    // A cancelled review keeps the unsent note in the editor.
     if (accepted != true || !mounted) return;
     final success = await perform(
       context,
@@ -385,7 +417,10 @@ class _PreferencesEditorState extends State<PreferencesEditor> {
       () => widget.store.shareCard(card),
       message: 'Your preferences are saved.',
     );
-    if (success) widget.onSaved?.call();
+    if (success) {
+      note.clear();
+      widget.onSaved?.call();
+    }
   }
 
   @override
@@ -495,6 +530,12 @@ class _PreferencesEditorState extends State<PreferencesEditor> {
             selected: card.interests.contains(id),
             onSelected: (selected) {
               final values = card.interests.toSet();
+              if (!selected && values.length == 1) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Keep at least one interest.')),
+                );
+                return;
+              }
               selected ? values.add(id) : values.remove(id);
               change(card.copyWith(interests: values.toList()));
             },
@@ -656,27 +697,60 @@ Future<void> showIdea(
                 Icons.directions_transit_outlined,
                 '~${rank.maxTravel} min max',
               ),
+            _detail(
+              idea.indoor ? Icons.home_outlined : Icons.park_outlined,
+              idea.indoor ? 'Indoors' : 'Outdoors',
+            ),
+            _detail(
+              Icons.volume_down_outlined,
+              const {
+                    1: 'Quiet',
+                    2: 'Conversational',
+                    3: 'Lively',
+                  }[idea.noise] ??
+                  'Noise unknown',
+            ),
+            _detail(
+              Icons.accessible_rounded,
+              idea.stepFree != true
+                  ? 'Step-free access not confirmed'
+                  : idea.source == 'host'
+                  ? 'Step-free access reported by the host'
+                  : 'Step-free access listed in sample data',
+            ),
           ],
         ),
         if (rank != null) ...[
           const SizedBox(height: 24),
           const Eyebrow('A fit for each person'),
-          const SizedBox(height: 10),
-          for (final fit in rank.fits)
+          const SizedBox(height: 12),
+          TravelMap(
+            people: store.room!.members,
+            activity: idea,
+            areas: store.data.areas,
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Neighbourhood centres · Illustrative, not a navigation map',
+            style: TextStyle(fontSize: 10, color: MH.muted),
+          ),
+          const SizedBox(height: 6),
+          for (final (fit, person) in rank.fits.map(
+            (f) =>
+                (f, store.room!.members.firstWhere((p) => p.id == f.memberId)),
+          ))
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Row(
                 children: [
                   Expanded(
                     child: Text(
-                      store.room!.members
-                          .firstWhere((p) => p.id == fit.memberId)
-                          .name,
+                      person.name,
                       style: const TextStyle(fontSize: 12),
                     ),
                   ),
                   Text(
-                    '${fit.score}/100 · ~${fit.travel} min',
+                    '${fit.score}/100 · ~${fit.travel} of ${person.card!.maxTravel} min',
                     style: const TextStyle(fontSize: 12, color: MH.secondary),
                   ),
                 ],
@@ -705,7 +779,12 @@ Future<void> showIdea(
             label: const Text('Visit venue website'),
           ),
         const SizedBox(height: 10),
-        if (rank != null && store.isHost)
+        if (rank != null && !store.isHost && store.room!.status != 'confirmed')
+          const Text(
+            'The host can put this idea to the group.',
+            style: TextStyle(fontSize: 11, color: MH.secondary, height: 1.6),
+          ),
+        if (rank != null && store.isHost && store.room!.status != 'confirmed')
           FilledButton(
             key: const Key('propose-plan'),
             onPressed: store.room!.members.length < 2

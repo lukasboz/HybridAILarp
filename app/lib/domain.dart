@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math' as math;
 
 typedef Json = Map<String, dynamic>;
@@ -552,6 +553,25 @@ String calendarFile(PlanRoom room, Activity activity) {
     return '${isoDate(t).replaceAll('-', '')}T${t.hour.toString().padLeft(2, '0')}${t.minute.toString().padLeft(2, '0')}00';
   }
 
+  // RFC 5545 folds content lines longer than 75 octets.
+  String fold(String line) {
+    final out = StringBuffer();
+    var octets = 0;
+    for (final rune in line.runes) {
+      final char = String.fromCharCode(rune), size = utf8.encode(char).length;
+      if (octets + size > 75) {
+        out.write('\r\n ');
+        octets = 1;
+      }
+      out.write(char);
+      octets += size;
+    }
+    return out.toString();
+  }
+
+  final cost = activity.cost == 0
+      ? 'free'
+      : 'about \$${activity.cost} per person';
   return [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
@@ -580,8 +600,8 @@ String calendarFile(PlanRoom room, Activity activity) {
     'DTEND;TZID=America/Toronto:${stamp(room.proposal!.startMinute + activity.duration)}',
     'SUMMARY:${escape(activity.name)}',
     'LOCATION:${escape('${activity.venue}, Toronto')}',
-    'DESCRIPTION:Confirm current venue details before travelling.',
+    'DESCRIPTION:${escape('${room.title}. Estimated cost: $cost. Nothing is booked: confirm current hours, prices and any reservation before travelling.')}',
     'END:VEVENT',
     'END:VCALENDAR',
-  ].join('\r\n');
+  ].map(fold).join('\r\n');
 }
