@@ -26,7 +26,7 @@ jobs:
       - run: bash scripts/flutter.sh analyze
       - run: bash scripts/flutter.sh test
       - run: bash scripts/flutter.sh build web --release --no-web-resources-cdn
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: flutter-web
           path: app/build/web
@@ -45,7 +45,7 @@ jobs:
           channel: stable
           cache: true
       - run: bash scripts/flutter.sh build apk --debug
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: android-debug-apk
           path: app/build/app/outputs/flutter-apk/app-debug.apk
@@ -63,7 +63,7 @@ jobs:
         run: bash scripts/flutter.sh build ios --release --no-codesign --dart-define=APP_CHECK_DEBUG=true
       - name: Preserve app permissions and framework symlinks
         run: tar -C app/build/ios/iphoneos -czf app/build/ios/MeetHalfway-unsigned-app.tar.gz Runner.app
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ios-development-unsigned-app
           path: app/build/ios/MeetHalfway-unsigned-app.tar.gz
