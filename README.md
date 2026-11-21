@@ -64,4 +64,4 @@ Flutter’s native iOS compilation requires **macOS and Xcode**, supplied here b
 - `web/`, `native/`: retained legacy HTML, SwiftUI and Compose implementations for reference. They are not the Flutter app’s runtime.
 - `tests/`: legacy JavaScript/Swift contracts and Firestore rules tests. Use `npm run test:legacy` or `npm run test:rules` as appropriate.
 
-[Architecture](docs/ARCHITECTURE.md) · [Build platforms](docs/PLATFORMS.md) · [Verification](docs/VERIFICATION.md) · [Design sources](docs/DESIGN.md)
+[Project status](docs/STATUS.md) · [Architecture](docs/ARCHITECTURE.md) · [Build platforms](docs/PLATFORMS.md) · [Verification](docs/VERIFICATION.md) · [Design sources](docs/DESIGN.md)
