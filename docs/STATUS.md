@@ -72,7 +72,7 @@ It is one Flutter app (`app/`) that runs on web, Android and iOS with the same s
 - Required items: Firebase AI Logic used at runtime, App Check, a public open-source repository, and a public demo video of 3 minutes or less. [HACKATHON.md](HACKATHON.md) has a demo script, though its AI claims predate the Flutter migration.
 
 ### Engineering notes
-- **The 4 screenshot baselines are out of date** after the November 21 mobile layout pass, and CI will fail them until they're regenerated. Regenerate them on Linux with `flutter test --update-goldens`, because Windows renders differ by 1–3%.
+- **Screenshot baselines** in `app/test/goldens/` are rendered on Linux, and Windows renders differ by 1–3%. After an intentional UI change, regenerate them on Linux with `flutter test --update-goldens`. Without a Linux machine, download the `golden-failures` artifact from the failed CI run and copy each `*_testImage.png` over its baseline.
 - `scripts/flutter.sh` calls `python3`. On Windows, make sure that command exists.
 - The legacy `web/` and `native/` clients remain only for reference and aren't maintained.
 
