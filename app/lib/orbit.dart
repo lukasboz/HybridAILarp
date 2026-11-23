@@ -239,19 +239,36 @@ class ActivityOrbit extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, box) {
-      final compact = box.maxWidth < 520, w = box.maxWidth, h = box.maxHeight;
-      final centre = Offset(w / 2, h * .46);
-      final radius = math.min(w * .375, math.min(h * .39, 214.0));
-      final peopleRadius = math.min(radius * .53, compact ? 79.0 : 109.0);
-      final tile = compact ? 52.0 : 70.0, orbSize = compact ? 82.0 : 114.0;
+      final w = box.maxWidth, h = box.maxHeight, compact = w < 520;
+      final centre = Offset(w / 2, h / 2), count = activities.length;
+      // The ring stays inside the box, and tiles shrink before they touch.
+      final fit = math.min(w, h) / 2 - 4;
+      var tile = compact ? 52.0 : 70.0;
+      var radius = math.min(fit - (tile + 4) / 2, 214.0);
+      if (count > 1) {
+        tile = (2 * radius * math.sin(math.pi / count) - 8).clamp(34.0, tile);
+        radius = math.min(fit - (tile + 4) / 2, 214.0);
+      }
+      final orbSize = (radius * .6).clamp(60.0, 114.0);
+      final avatar = (radius * .24).clamp(26.0, 38.0);
+      final tiles = [
+        for (var i = 0; i < count; i++) _tileRect(i, centre, radius, tile),
+      ];
+      final placed = _layoutPeople(context, centre, orbSize, avatar, tiles);
+      final caption = home
+          ? 'Find your halfway'
+          : ready
+          ? 'Common ground, found.'
+          : 'Bringing everyone together.';
+      final glow = math.min(320.0, radius * 2.5);
       return Stack(
         clipBehavior: Clip.none,
         children: [
           Positioned(
-            left: centre.dx - 160,
-            top: centre.dy - 160,
-            width: 320,
-            height: 320,
+            left: centre.dx - glow / 2,
+            top: centre.dy - glow / 2,
+            width: glow,
+            height: glow,
             child: DecoratedBox(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
@@ -278,7 +295,7 @@ class ActivityOrbit extends StatelessWidget {
             ),
           ),
           for (final (index, idea) in activities.indexed)
-            _tile(idea, index, centre, radius, tile),
+            _tile(idea, tiles[index]),
           Positioned(
             left: centre.dx - orbSize / 2,
             top: centre.dy - orbSize / 2,
@@ -298,41 +315,154 @@ class ActivityOrbit extends StatelessWidget {
               ),
             ),
           ),
+          // The caption sits inside the orb, where nothing can crowd it.
           Positioned(
-            top: centre.dy + orbSize / 2 + 19,
-            left: centre.dx - 100,
-            width: 200,
-            child: Text(
-              home
-                  ? 'Find your halfway'
-                  : ready
-                  ? 'Common ground, found.'
-                  : 'Bringing everyone together.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: compact ? 9 : 10, color: MH.muted),
+            left: centre.dx - orbSize / 2,
+            top: centre.dy - orbSize / 2,
+            width: orbSize,
+            height: orbSize,
+            child: IgnorePointer(
+              child: ExcludeSemantics(
+                child: Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(orbSize * .1),
+                    // Decorative and repeated elsewhere, so it may cap
+                    // scaling rather than break words inside a small orb.
+                    child: Text(
+                      caption,
+                      textAlign: TextAlign.center,
+                      maxLines: 3,
+                      textScaler: MediaQuery.textScalerOf(context)
+                          .clamp(maxScaleFactor: 1.15),
+                      style: TextStyle(
+                        fontSize: orbSize < 76
+                            ? 8
+                            : orbSize < 90
+                            ? 9
+                            : 10.5,
+                        height: 1.25,
+                        fontWeight: FontWeight.w500,
+                        color: MH.secondary,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
           for (final (index, person) in people.take(8).indexed)
-            _person(context, person, index, centre, peopleRadius, compact),
+            _person(person, index, placed.rects[index], avatar, placed.lines),
         ],
       );
     },
   );
-  Widget _tile(
-    Activity idea,
-    int index,
-    Offset centre,
-    double radius,
-    double size,
-  ) {
-    final angle = index / activities.length * 2 * math.pi - math.pi / 2;
-    final fit = ranked.where((p) => p.candidate.id == idea.id).firstOrNull;
-    final eligible = home || !ready || fit != null;
-    return Positioned(
-      left: centre.dx + math.cos(angle) * radius - size / 2,
-      top: centre.dy + math.sin(angle) * radius - (size + 4) / 2,
+
+  // A half-step offset keeps the top of the ring free for the first person.
+  Rect _tileRect(int index, Offset centre, double radius, double size) {
+    final angle = (index + .5) / activities.length * 2 * math.pi - math.pi / 2;
+    return Rect.fromCenter(
+      center: centre + Offset(math.cos(angle), math.sin(angle)) * radius,
       width: size,
       height: size + 4,
+    );
+  }
+
+  /// Places each person between the orb and the tiles, dropping the status
+  /// line and then the name when they would collide with something.
+  ({List<Rect> rects, int lines}) _layoutPeople(
+    BuildContext context,
+    Offset centre,
+    double orbSize,
+    double avatar,
+    List<Rect> tiles,
+  ) {
+    final shown = people.take(8).toList();
+    if (shown.isEmpty) return (rects: const <Rect>[], lines: 0);
+    final scaler = MediaQuery.textScalerOf(context);
+    double textWidth(String text, double size, FontWeight weight) {
+      final painter = TextPainter(
+        text: TextSpan(
+          text: text,
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontSize: size,
+            fontWeight: weight,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+        textScaler: scaler,
+        maxLines: 1,
+      )..layout();
+      final width = painter.width;
+      painter.dispose();
+      return width;
+    }
+
+    final ring = tiles.isEmpty
+        ? orbSize * 1.6
+        : (tiles.first.center - centre).distance - tiles.first.height / 2;
+    final line = scaler.scale(13) + 2;
+    List<Rect> place(int lines, double fraction) {
+      final low = orbSize / 2 + avatar / 2 + 4, high = ring - avatar / 2 - 4;
+      final radius = low + (high - low) * fraction;
+      return [
+        for (final (i, person) in shown.indexed)
+          Rect.fromCenter(
+            center:
+                centre +
+                Offset(
+                      math.cos(i / shown.length * 2 * math.pi - math.pi / 2),
+                      math.sin(i / shown.length * 2 * math.pi - math.pi / 2),
+                    ) *
+                    radius,
+            width:
+                [
+                  avatar,
+                  if (lines > 0)
+                    math.min(textWidth(person.name, 9, FontWeight.w500), 84.0),
+                  if (lines > 1) textWidth(_status(person), 8, FontWeight.w400),
+                ].reduce(math.max) +
+                4,
+            height: avatar + lines * line,
+          ),
+      ];
+    }
+
+    bool clear(List<Rect> rects) {
+      for (final (i, rect) in rects.indexed) {
+        final near = Offset(
+          centre.dx.clamp(rect.left, rect.right),
+          centre.dy.clamp(rect.top, rect.bottom),
+        );
+        if ((near - centre).distance < orbSize / 2 + 3) return false;
+        if (tiles.any((t) => t.inflate(3).overlaps(rect))) return false;
+        if (rects.skip(i + 1).any((o) => o.inflate(2).overlaps(rect))) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    for (final lines in [2, 1]) {
+      for (final fraction in [.5, .4, .6, .3, .7]) {
+        final rects = place(lines, fraction);
+        if (clear(rects)) return (rects: rects, lines: lines);
+      }
+    }
+    return (rects: place(0, .5), lines: 0);
+  }
+
+  String _status(Person person) => home
+      ? 'Sample'
+      : person.card != null
+      ? 'Ready'
+      : 'Adding preferences';
+
+  Widget _tile(Activity idea, Rect rect) {
+    final fit = ranked.where((p) => p.candidate.id == idea.id).firstOrNull;
+    final eligible = home || !ready || fit != null;
+    return Positioned.fromRect(
+      rect: rect,
       child: Tooltip(
         message: idea.name,
         child: Semantics(
@@ -405,58 +535,59 @@ class ActivityOrbit extends StatelessWidget {
   }
 
   Widget _person(
-    BuildContext context,
     Person person,
     int index,
-    Offset centre,
-    double radius,
-    bool compact,
-  ) {
-    final angle = index / people.length * 2 * math.pi - math.pi / 2;
-    return Positioned(
-      left: centre.dx + math.cos(angle) * radius - 43,
-      top: centre.dy + math.sin(angle) * radius - 29,
-      width: 86,
-      height:
-          73 + (MediaQuery.textScalerOf(context).scale(1) - 1).clamp(0, 2) * 32,
-      child: Semantics(
-        button: true,
-        label:
-            '${person.name}, ${home
-                ? 'sample participant'
-                : person.card != null
-                ? 'preferences shared'
-                : 'adding preferences'}',
-        child: InkWell(
-          onTap: () => onPerson(person),
-          borderRadius: BorderRadius.circular(12),
+    Rect rect,
+    double avatar,
+    int lines,
+  ) => Positioned.fromRect(
+    rect: rect,
+    child: Semantics(
+      button: true,
+      label:
+          '${person.name}, ${home
+              ? 'sample participant'
+              : person.card != null
+              ? 'preferences shared'
+              : 'adding preferences'}',
+      child: InkWell(
+        onTap: () => onPerson(person),
+        borderRadius: BorderRadius.circular(12),
+        child: ExcludeSemantics(
           child: Column(
             children: [
-              PersonAvatar(person, index: index, size: compact ? 31 : 38),
-              const SizedBox(height: 5),
-              Text(
-                person.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: compact ? 9 : 10,
-                  fontWeight: FontWeight.w500,
-                  color: MH.secondary,
+              PersonAvatar(person, index: index, size: avatar),
+              if (lines > 0) ...[
+                const SizedBox(height: 2),
+                Text(
+                  person.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 9,
+                    height: 1.3,
+                    fontWeight: FontWeight.w500,
+                    color: MH.secondary,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                home
-                    ? 'Sample'
-                    : person.card != null
-                    ? 'Ready'
-                    : 'Adding preferences',
-                style: const TextStyle(fontSize: 8, color: MH.muted),
-              ),
+              ],
+              if (lines > 1) ...[
+                const SizedBox(height: 2),
+                Text(
+                  _status(person),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 8,
+                    height: 1.3,
+                    color: MH.muted,
+                  ),
+                ),
+              ],
             ],
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
 }

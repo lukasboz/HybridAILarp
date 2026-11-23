@@ -25,6 +25,13 @@ jobs:
       - run: bash scripts/flutter.sh pub get
       - run: bash scripts/flutter.sh analyze
       - run: bash scripts/flutter.sh test
+      # Linux renders of mismatched screenshots; *_testImage.png files can replace the baselines.
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: golden-failures
+          path: app/test/failures
+          if-no-files-found: ignore
       - run: bash scripts/flutter.sh build web --release --no-web-resources-cdn
       - uses: actions/upload-artifact@v7
         with:

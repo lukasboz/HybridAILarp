@@ -201,7 +201,11 @@ class _MeetShellState extends State<MeetShell> {
       children: [
         const Padding(
           padding: EdgeInsets.fromLTRB(6, 3, 0, 35),
-          child: Brand(large: true),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Brand(large: true),
+          ),
         ),
         for (final (id, label, icon) in destinations)
           Padding(

@@ -69,7 +69,13 @@ class _TravelMapPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.scale(size.width / width, size.height / height);
+    final sx = size.width / width, sy = size.height / height;
+    // The street plan scales with the map; text and markers keep a readable
+    // pixel size on narrow phones.
+    final k = (size.width / 480).clamp(.85, 1.15);
+    Offset at(Offset p) => Offset(p.dx * sx, p.dy * sy);
+    canvas.save();
+    canvas.scale(sx, sy);
     canvas.drawRect(
       const Rect.fromLTWH(0, 0, width, height),
       Paint()..color = Color.lerp(MH.canvas, MH.surface, .5)!,
@@ -95,27 +101,35 @@ class _TravelMapPainter extends CustomPainter {
       ..lineTo(0, height)
       ..close();
     canvas.drawPath(lake, Paint()..color = MH.orb.withValues(alpha: .75));
-    const quiet = TextStyle(
-      fontSize: 10,
-      letterSpacing: 1.4,
+    canvas.restore();
+
+    final quiet = TextStyle(
+      fontSize: 9 * k,
+      letterSpacing: 1.2 * k,
       color: MH.muted,
       fontFamily: 'Inter',
     );
-    label(canvas, 'LAKE ONTARIO', const Offset(420, 360), quiet);
+    final ring = 14 * k;
+    label(
+      canvas,
+      'LAKE ONTARIO',
+      Offset(size.width * .7, size.height - 7 * k),
+      quiet,
+    );
     for (final area in areas) {
-      final point = project(area['lat'] as num, area['lng'] as num);
       label(
         canvas,
         (area['name'] as String).toUpperCase(),
-        point + const Offset(0, 26),
-        quiet.copyWith(fontSize: 9),
+        at(project(area['lat'] as num, area['lng'] as num)) +
+            Offset(0, ring + 7 * k),
+        quiet.copyWith(fontSize: 8 * k),
       );
     }
 
-    final target = project(activity.lat, activity.lng);
+    final target = at(project(activity.lat, activity.lng));
     final arc = Paint()
       ..color = MH.accent.withValues(alpha: .65)
-      ..strokeWidth = 2
+      ..strokeWidth = 1.8
       ..style = PaintingStyle.stroke;
     final origins = <Offset>[];
     for (final (i, person) in people.indexed) {
@@ -128,25 +142,30 @@ class _TravelMapPainter extends CustomPainter {
           .where((p) => p.card?.areaId == card.areaId)
           .length;
       final origin =
-          project(area['lat'] as num, area['lng'] as num) +
-          Offset(neighbours * 26.0, 0);
+          at(project(area['lat'] as num, area['lng'] as num)) +
+          Offset(neighbours * (ring * 2 + 2), 0);
       origins.add(origin);
       final mid = Offset.lerp(origin, target, .5)!;
       final path = Path()
         ..moveTo(origin.dx, origin.dy)
-        ..quadraticBezierTo(mid.dx + 30, mid.dy - 34, target.dx, target.dy);
+        ..quadraticBezierTo(
+          mid.dx + 30 * sx,
+          mid.dy - 34 * sy,
+          target.dx,
+          target.dy,
+        );
       for (final metric in path.computeMetrics()) {
-        for (var d = 0.0; d < metric.length; d += 10) {
-          canvas.drawPath(metric.extractPath(d, d + 5), arc);
+        for (var d = 0.0; d < metric.length; d += 9) {
+          canvas.drawPath(metric.extractPath(d, d + 4.5), arc);
         }
       }
     }
     for (final (i, person) in people.where((p) => p.card != null).indexed) {
       final origin = origins[i];
-      canvas.drawCircle(origin, 15, Paint()..color = Colors.white);
+      canvas.drawCircle(origin, ring, Paint()..color = Colors.white);
       canvas.drawCircle(
         origin,
-        12.5,
+        ring - 2.5,
         Paint()
           ..color = PersonAvatar
               .colors[people.indexOf(person) % PersonAvatar.colors.length],
@@ -155,23 +174,23 @@ class _TravelMapPainter extends CustomPainter {
         canvas,
         person.initials,
         origin,
-        const TextStyle(
-          fontSize: 9,
+        TextStyle(
+          fontSize: 9 * k,
           fontWeight: FontWeight.w600,
           color: MH.ink,
           fontFamily: 'Inter',
         ),
-        maxWidth: 24,
+        maxWidth: ring * 2,
       );
     }
-    canvas.drawCircle(target, 19, Paint()..color = MH.orb);
-    canvas.drawCircle(target, 16, Paint()..color = MH.ink);
+    canvas.drawCircle(target, 18 * k, Paint()..color = MH.orb);
+    canvas.drawCircle(target, 15 * k, Paint()..color = MH.ink);
     label(
       canvas,
       String.fromCharCode(Icons.place_rounded.codePoint),
       target,
       TextStyle(
-        fontSize: 17,
+        fontSize: 16 * k,
         color: MH.surface,
         fontFamily: Icons.place_rounded.fontFamily,
         package: Icons.place_rounded.fontPackage,

@@ -92,6 +92,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     Wrap(
                       alignment: WrapAlignment.center,
                       spacing: 8,
+                      runSpacing: 4,
                       children: [
                         TextButton.icon(
                           key: const Key('explore-sample'),
@@ -220,6 +221,7 @@ class PlansScreen extends StatelessWidget {
               label: const Text('Join with a link'),
             ),
             TextButton.icon(
+              style: MH.flushText,
               onPressed: () => perform(context, store, store.refreshLive),
               icon: const Icon(Icons.refresh_rounded, size: 16),
               label: const Text('Refresh live plans'),
@@ -371,8 +373,8 @@ class _RoomScreenState extends State<RoomScreen> {
               Row(
                 children: [
                   const SizedBox(width: 8),
-                  const Eyebrow('A little common ground'),
-                  const Spacer(),
+                  const Expanded(child: Eyebrow('A little common ground')),
+                  const SizedBox(width: 8),
                   Text(
                     '${ranked.length} ${ranked.length == 1 ? 'idea' : 'ideas'} fit',
                     style: const TextStyle(fontSize: 10, color: MH.muted),
@@ -380,22 +382,25 @@ class _RoomScreenState extends State<RoomScreen> {
                   const SizedBox(width: 8),
                 ],
               ),
-              SizedBox(
-                height: wide ? 460 : 360,
-                child: ActivityOrbit(
-                  people: room.members,
-                  activities: activities,
-                  ranked: ranked,
-                  selected: selected?.candidate.id ?? '',
-                  ready: room.allReady,
-                  onActivity: (idea) {
-                    if (ranked.any((p) => p.candidate.id == idea.id)) {
-                      store.select(idea.id);
-                    } else {
-                      setState(() => rejected = true);
-                    }
-                  },
-                  onPerson: (p) => store.switchPerson(p.id),
+              // A square stage on phones, so the ring uses its full width.
+              LayoutBuilder(
+                builder: (context, area) => SizedBox(
+                  height: wide ? 460 : area.maxWidth.clamp(280.0, 420.0),
+                  child: ActivityOrbit(
+                    people: room.members,
+                    activities: activities,
+                    ranked: ranked,
+                    selected: selected?.candidate.id ?? '',
+                    ready: room.allReady,
+                    onActivity: (idea) {
+                      if (ranked.any((p) => p.candidate.id == idea.id)) {
+                        store.select(idea.id);
+                      } else {
+                        setState(() => rejected = true);
+                      }
+                    },
+                    onPerson: (p) => store.switchPerson(p.id),
+                  ),
                 ),
               ),
             ],
@@ -440,6 +445,7 @@ class _RoomScreenState extends State<RoomScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               TextButton.icon(
+                style: MH.flushText,
                 onPressed: () => store.navigate('plans'),
                 icon: const Icon(Icons.arrow_back_rounded, size: 15),
                 label: const Text('My plans'),
@@ -475,6 +481,7 @@ class _RoomScreenState extends State<RoomScreen> {
                     ),
                   if (room.local)
                     TextButton.icon(
+                      style: MH.flushText,
                       onPressed: () =>
                           perform(context, store, store.addSamplePerson),
                       icon: const Icon(Icons.person_add_alt_rounded, size: 16),
@@ -509,58 +516,78 @@ class _RoomScreenState extends State<RoomScreen> {
                 ),
               ],
               const SizedBox(height: 20),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    for (final (i, person) in room.members.indexed)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 9),
-                        child: InkWell(
-                          key: Key('person-${person.id}'),
-                          onTap: room.local
-                              ? () => store.switchPerson(person.id)
-                              : null,
-                          borderRadius: BorderRadius.circular(13),
-                          child: GlassSurface(
-                            radius: 13,
-                            color: person.id == store.myId
-                                ? MH.accentSoft.withValues(alpha: .65)
-                                : Colors.white,
-                            padding: const EdgeInsets.all(10),
-                            child: Row(
-                              children: [
-                                PersonAvatar(person, index: i, size: 31),
-                                const SizedBox(width: 9),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      '${person.name}${person.id == store.myId ? ' · you' : ''}',
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                      ),
+              // Two even columns on phones; nobody is cut off at the edge.
+              LayoutBuilder(
+                builder: (context, area) {
+                  const gap = 9.0;
+                  final width = area.maxWidth < 600
+                      ? (area.maxWidth - gap) / 2
+                      : 210.0;
+                  final tight = width < 150;
+                  return Wrap(
+                    spacing: gap,
+                    runSpacing: gap,
+                    children: [
+                      for (final (i, person) in room.members.indexed)
+                        SizedBox(
+                          width: width,
+                          child: InkWell(
+                            key: Key('person-${person.id}'),
+                            onTap: room.local
+                                ? () => store.switchPerson(person.id)
+                                : null,
+                            borderRadius: BorderRadius.circular(13),
+                            child: GlassSurface(
+                              radius: 13,
+                              color: person.id == store.myId
+                                  ? MH.accentSoft.withValues(alpha: .65)
+                                  : Colors.white,
+                              padding: EdgeInsets.all(tight ? 8 : 10),
+                              child: Row(
+                                children: [
+                                  PersonAvatar(
+                                    person,
+                                    index: i,
+                                    size: tight ? 26 : 30,
+                                  ),
+                                  SizedBox(width: tight ? 7 : 9),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '${person.name}${person.id == store.myId ? ' · you' : ''}',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          person.card == null
+                                              ? 'Adding preferences'
+                                              : 'Preferences shared',
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontSize: 9,
+                                            color: MH.secondary,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      person.card == null
-                                          ? 'Adding preferences'
-                                          : 'Preferences shared',
-                                      style: const TextStyle(
-                                        fontSize: 9,
-                                        color: MH.secondary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                  ],
-                ),
+                    ],
+                  );
+                },
               ),
               if (room.proposal != null) ...[
                 const SizedBox(height: 22),
@@ -599,6 +626,7 @@ class _RoomScreenState extends State<RoomScreen> {
               const SizedBox(height: 24),
               Wrap(
                 spacing: 8,
+                runSpacing: 8,
                 children: [
                   ChoiceChip(
                     label: Text('Common ground (${ranked.length})'),
@@ -804,6 +832,10 @@ class PlanCard extends StatelessWidget {
                 ),
               ),
               TextButton(
+                // The label ends on the card's content edge.
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.only(left: 12),
+                ),
                 key: Key('details-${rank.candidate.id}'),
                 onPressed: () =>
                     showIdea(context, store, rank.candidate, rank: rank),
@@ -918,9 +950,8 @@ class VotingPanel extends StatelessWidget {
               style: TextStyle(fontSize: 11, color: MH.secondary, height: 1.6),
             ),
             const SizedBox(height: 14),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
+            ButtonRow(
+              minWidth: 140,
               children: [
                 FilledButton.icon(
                   onPressed: () => calendar(context),
@@ -934,15 +965,16 @@ class VotingPanel extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             const Text(
               'How did it feel?',
               style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
             ),
-            Wrap(
-              spacing: 8,
+            const SizedBox(height: 10),
+            ButtonRow(
+              minWidth: 140,
               children: [
-                TextButton(
+                OutlinedButton(
                   onPressed: () => perform(
                     context,
                     store,
@@ -951,7 +983,7 @@ class VotingPanel extends StatelessWidget {
                   ),
                   child: const Text('More like this'),
                 ),
-                TextButton(
+                OutlinedButton(
                   onPressed: () => perform(
                     context,
                     store,
@@ -963,9 +995,9 @@ class VotingPanel extends StatelessWidget {
               ],
             ),
           ] else ...[
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
+            ButtonRow(
+              minWidth: 72,
+              maxWidth: 130,
               children: [
                 for (final (choice, label) in [
                   ('yes', 'I’m in'),
@@ -975,6 +1007,10 @@ class VotingPanel extends StatelessWidget {
                   OutlinedButton(
                     key: Key('vote-$choice'),
                     style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 12,
+                      ),
                       backgroundColor:
                           room.votes[store.myId]?.revision ==
                                   proposal.revision &&

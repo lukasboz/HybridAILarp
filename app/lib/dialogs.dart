@@ -21,67 +21,79 @@ class PlanDialog extends StatelessWidget {
   final String? subtitle;
   final Widget child;
   @override
-  Widget build(BuildContext context) => Dialog(
-    backgroundColor: MH.canvas,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(26),
-      side: const BorderSide(color: MH.border),
-    ),
-    insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
-    child: ConstrainedBox(
-      constraints: BoxConstraints(
-        maxWidth: 560,
-        maxHeight: math.max(220, MediaQuery.sizeOf(context).height - 72),
+  Widget build(BuildContext context) {
+    // Narrow phones get more room for content inside the dialog.
+    final narrow = MediaQuery.sizeOf(context).width < 400;
+    return Dialog(
+      backgroundColor: MH.canvas,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(26),
+        side: const BorderSide(color: MH.border),
       ),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: -.8,
-                      height: 1.25,
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: narrow ? 12 : 18,
+        vertical: 24,
+      ),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 560,
+          maxHeight: math.max(220, MediaQuery.sizeOf(context).height - 72),
+        ),
+        child: SingleChildScrollView(
+          padding: EdgeInsets.all(narrow ? 20 : 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: narrow ? 22 : 24,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: -.8,
+                        height: 1.25,
+                      ),
                     ),
                   ),
-                ),
-                IconButton(
-                  tooltip: 'Close',
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(
-                    Icons.close_rounded,
-                    size: 19,
+                  const SizedBox(width: 8),
+                  // Centred on the title's first line, edge on the content edge.
+                  Transform.translate(
+                    offset: const Offset(10, -6),
+                    child: IconButton(
+                      tooltip: 'Close',
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        size: 19,
+                        color: MH.secondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (subtitle != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  subtitle!,
+                  style: const TextStyle(
+                    fontSize: 12,
                     color: MH.secondary,
+                    height: 1.7,
                   ),
                 ),
               ],
-            ),
-            if (subtitle != null) ...[
-              const SizedBox(height: 6),
-              Text(
-                subtitle!,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: MH.secondary,
-                  height: 1.7,
-                ),
-              ),
+              const SizedBox(height: 24),
+              child,
             ],
-            const SizedBox(height: 24),
-            child,
-          ],
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 Future<void> showCreatePlan(
@@ -472,6 +484,7 @@ class _PreferencesEditorState extends State<PreferencesEditor> {
       const Eyebrow('Or make it yours with the controls'),
       const SizedBox(height: 16),
       DropdownButtonFormField<String>(
+        style: MH.field,
         initialValue: card.areaId,
         decoration: const InputDecoration(labelText: 'Starting neighbourhood'),
         items: widget.store.data.areas
@@ -505,6 +518,7 @@ class _PreferencesEditorState extends State<PreferencesEditor> {
       ),
       const SizedBox(height: 8),
       DropdownButtonFormField<String>(
+        style: MH.field,
         initialValue: card.mode,
         decoration: const InputDecoration(labelText: 'Getting there'),
         items: const [
@@ -637,18 +651,14 @@ class _PreferencesEditorState extends State<PreferencesEditor> {
     int selected,
     ValueChanged<int> onChanged,
   ) => DropdownButtonFormField<int>(
+    style: MH.field,
     key: ValueKey('$label-$selected'),
     initialValue: selected,
     decoration: InputDecoration(labelText: label),
     items: List.generate(37, (i) => 360 + i * 30)
         .map(
-          (minute) => DropdownMenuItem(
-            value: minute,
-            child: Text(
-              timeLabel(minute),
-              style: const TextStyle(fontSize: 12),
-            ),
-          ),
+          (minute) =>
+              DropdownMenuItem(value: minute, child: Text(timeLabel(minute))),
         )
         .toList(),
     onChanged: (v) {
@@ -872,6 +882,7 @@ class _AddOptionDialogState extends State<AddOptionDialog> {
         ),
         const SizedBox(height: 10),
         DropdownButtonFormField<String>(
+          style: MH.field,
           initialValue: area,
           decoration: const InputDecoration(labelText: 'Neighbourhood'),
           items: widget.store.data.areas
@@ -896,6 +907,7 @@ class _AddOptionDialogState extends State<AddOptionDialog> {
         ),
         const SizedBox(height: 16),
         DropdownButtonFormField<String>(
+          style: MH.field,
           initialValue: interest,
           decoration: const InputDecoration(labelText: 'Main interest'),
           items: widget.store.data.interests
@@ -922,6 +934,7 @@ class _AddOptionDialogState extends State<AddOptionDialog> {
         ),
         const SizedBox(height: 16),
         DropdownButtonFormField<int>(
+          style: MH.field,
           initialValue: noise,
           decoration: const InputDecoration(labelText: 'Noise level'),
           items: const [
@@ -1007,15 +1020,11 @@ class _AddOptionDialogState extends State<AddOptionDialog> {
   );
   Widget _time(String label, int value, ValueChanged<int> onChanged) =>
       DropdownButtonFormField<int>(
+        style: MH.field,
         initialValue: value,
         decoration: InputDecoration(labelText: label),
         items: List.generate(37, (i) => 360 + i * 30)
-            .map(
-              (t) => DropdownMenuItem(
-                value: t,
-                child: Text(timeLabel(t), style: const TextStyle(fontSize: 12)),
-              ),
-            )
+            .map((t) => DropdownMenuItem(value: t, child: Text(timeLabel(t))))
             .toList(),
         onChanged: (v) => onChanged(v!),
       );

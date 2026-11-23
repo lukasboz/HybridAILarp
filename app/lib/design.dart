@@ -16,6 +16,10 @@ abstract final class MH {
       orb = DesignTokens.orb,
       muted = DesignTokens.muted,
       surfaceTint = DesignTokens.surfaceTint;
+  // Text buttons that start a line keep their label on the content edge.
+  static final flushText = TextButton.styleFrom(padding: EdgeInsets.zero);
+  // One value size for dropdowns, matching text fields.
+  static const field = TextStyle(fontFamily: 'Inter', fontSize: 14, color: ink);
   static ThemeData theme() => ThemeData(
     // Deliberately one control style on every target; never adaptive OS widgets.
     platform: TargetPlatform.android,
@@ -136,6 +140,8 @@ abstract final class MH {
       inactiveTrackColor: accentSoft,
       thumbColor: accent,
       trackHeight: 3,
+      // The track lines up with the labels above it.
+      padding: EdgeInsets.symmetric(vertical: 16),
     ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
@@ -351,6 +357,54 @@ class EmptyState extends StatelessWidget {
         if (action != null) ...[const SizedBox(height: 18), action!],
       ],
     ),
+  );
+}
+
+/// Equal-width buttons in one row, stacked full width when the row would
+/// squeeze each below [minWidth].
+class ButtonRow extends StatelessWidget {
+  const ButtonRow({
+    super.key,
+    required this.children,
+    this.minWidth = 120,
+    this.maxWidth = 220,
+  });
+  final List<Widget> children;
+  final double minWidth, maxWidth;
+  static const gap = 8.0;
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, box) {
+      final count = children.length;
+      final scale = MediaQuery.textScalerOf(context).scale(1);
+      if (box.maxWidth < minWidth * scale * count + gap * (count - 1)) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final (i, child) in children.indexed) ...[
+              if (i > 0) const SizedBox(height: gap),
+              child,
+            ],
+          ],
+        );
+      }
+      return Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: maxWidth * scale * count + gap * (count - 1),
+          ),
+          child: Row(
+            children: [
+              for (final (i, child) in children.indexed) ...[
+                if (i > 0) const SizedBox(width: gap),
+                Expanded(child: child),
+              ],
+            ],
+          ),
+        ),
+      );
+    },
   );
 }
 
