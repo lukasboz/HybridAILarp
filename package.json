@@ -25,7 +25,9 @@
     "test:legacy": "node --test tests/*.test.mjs",
     "build:android:release": "bash scripts/flutter.sh build appbundle --release --target-platform android-arm64",
     "prepare:app-links": "node scripts/prepare-app-links.mjs",
-    "check:functions": "node --check functions/index.js"
+    "check:functions": "node --check functions/index.js",
+    "package:android": "python3 scripts/package-android-release.py",
+    "upload:android": "node scripts/upload-android-release.mjs"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^6.0.0",

@@ -1,59 +1,65 @@
 # Project status
 
-_As of November 23, 2026 · implementation version 0.3.0 (build 4)_
+_As of November 24, 2026 · version 0.4.0 (build 5)_
 
-The canonical Flutter app is `app/`. `web/` and `native/` are historical clients.
-This implementation pass follows the agreed scope: local AI where capable,
-free providers first, principal product flows, then multi-stop planning.
+The canonical Flutter app is `app/`. The implementation is published on
+[`codex/complete-hybrid-experience`](https://github.com/lukasboz/HybridAILarp/tree/codex/complete-hybrid-experience).
+The web app is deployed at https://meethalfway-2026-e43ca6.web.app/.
 
-## Implemented in this pass
+## Implemented
 
-| Area | Implementation |
+| Area | Current behavior |
 | --- | --- |
-| On-device AI | Flutter Edge AI / LiteRT-LM; pinned Qwen3 0.6B (~345 MB) on ARM64 phones and Gemma 4 E2B web (~2 GB). Capability probe, explicit download, progress/cancel/delete, validated card review, model receipts and a 120-second generation deadline. No automatic cloud fallback. |
-| Discovery | Toronto OSM/Overpass searches by neighbourhood and interest, bounded requests, 24-hour caching, source attribution and host-reviewed import. Unknown prices/access are not invented. |
-| Routes | User-approved, on-demand Transitous transit/walk/bike checks for neighbourhood-to-venue trips, with attribution and cached results. Provider routes are separate from deterministic estimates. |
-| Accounts | Email/password sign-in, recovery, verification, anonymous-account linking, private approved-card/name sync and feedback defaults, sign-out, export and private account deletion. A guest with active plans must link an account or leave those plans before switching identities. |
-| Plan management | Edit title/date and host options, variable activity length, rename self, leave/remove people, transfer host, revoke invitation capabilities and purge live plans. |
-| Notifications | Live per-room Updates feed on the free plan; optional FCM installation registration, web worker, foreground/open handling, private inbox and bounded Cloud Functions delivery. Push remains disabled until explicitly configured. |
-| Connectivity | Offline/cache notices, live header subscriptions and restored plans; versioned offline web shell after packaging. Model files use the inference library's separate cache. |
-| Distribution | Android release key configuration without debug-key release fallback; ARM64 Android 11+ builds; native invitation handling; iOS distribution entitlements; real-identity app-link file generator. |
-| Multi-stop | Ordered two/three-stop proposals, activity durations, cumulative costs and travel, shared-window/setting/access checks, same-revision unanimous approval, full-itinerary sharing/calendar export. |
+| Local AI | Opt-in Qwen3 0.6B download (~345 MB) on ARM64 Android/iOS through LiteRT-LM; dedicated Gemma 4 E2B browser model (~2 GB) through WebGPU. Download progress, cancellation/removal, capability messages, strict card validation and local receipts. No automatic cloud fallback. |
+| Cloud AI | Separately consented Firebase AI Logic drafting and shortlist explanations, bounded primary/fallback requests and model receipts. Manual controls work independently. |
+| Accounts | Anonymous participation, email/password linking, existing-account login/recovery, proof of both identities before guest membership migration, private profile sync, export and deletion of private/social data. |
+| Lifecycle | Edit title/date/options/name, leave/remove members, transfer host, revoke invitation links, resume interrupted room deletion and reopen decisions after shared changes. |
+| Discovery | Explicit OSM/Overpass searches around Toronto neighbourhoods; bounded cached results, real coordinates, source URLs/retrieval times and source-reported hours/fees/access. Host review supplies plan-specific facts. |
+| Sourced travel | Explicit host opt-in to Transitous routes for every participant. Fresh, input-bound results drive ranking and itinerary transfers. Missing/expired/mismatched routes fail eligibility. Requests are cached, paced and limited to 100 uncached requests per device/day. |
+| People | Friendship links, revocation, saved two-person relationships, name updates, removal and direct shared-plan invitations. Friendship grants no room/card access by itself. |
+| Private history | Confirmed snapshots, calendar export, personal star ratings and “again” feedback. Account sync and local-only storage; deleted cloud entries have tombstones to prevent accidental re-archiving. |
+| Multi-stop | Ordered two/three-stop plans, activity duration, cumulative budget/travel, windows/settings/access checks, sourced transfer timing, exact-revision unanimous voting and full-itinerary sharing/calendar export. |
+| Updates/offline | Live room activity, private invitations, connectivity/cache notices, optional push registration/backend and versioned offline web shell. Downloaded models have their own cache. |
+| Distribution | Signed ARM64 Android APK/AAB, local private signing configuration, registered certificate, deployed Android app-link document, native deep links and iOS distribution setup. |
 
-## Activation still needed
+## Deployed and built
 
-No service deployment, billing change, account-provider activation, store upload,
-or signing-key publication was performed.
+Email/password Auth, Firestore rules/indexes, Remote Config and Flutter Hosting
+are deployed. The hosted release metadata and Android verification fingerprint
+were read back and matched the local release.
 
-1. Enable the configured email/password provider and deploy the updated rules
-   before using the new account/lifecycle/schema paths against production.
-2. Build/package and deploy Hosting to replace the older public client; publish
-   the existing Remote Config template if it is still pending.
-3. For background push only: opt into Blaze, deploy `functions/`, configure web
-   VAPID/APNs credentials and set `pushEnabled` in the ignored client config.
-   The Updates feed works without this service. See `functions/README.md`.
-4. Supply actual Android release keys and an Apple distribution team/profile.
-   Run `scripts/prepare-app-links.mjs` with real signing IDs and deploy the
-   resulting `.well-known` files. Free iPhone development installs can use
-   the custom invitation scheme; universal links/APNs need provisioned capabilities.
-5. Review quotas before a public launch. Overpass and Transitous are community
-   services; Transitous's public endpoint is limited to light, open-source,
-   non-commercial use. Current requests are explicit and cached.
+Signed Android artifacts are in `artifacts/android/`. Spark Hosting rejects APK
+files, so installable binaries are kept outside Hosting. App Distribution upload
+is prepared but requires the owner's initial console onboarding.
 
-## Verification boundary
+The Mac CI build passed. Its verified unsigned iOS app is prepared locally at `artifacts/ios/Runner.app`, with the configured archive and installation steps in [release handoff](RELEASE.md). Physical-device operation is not claimed from a
+successful compilation.
 
-Functional tests, emulator flows, golden updates and physical-device validation
-are deliberately deferred at the user's request. Static analysis, compilation
-and rules syntax checks are tracked separately in `VERIFICATION.md`.
+## Human-only activation
 
-The earlier 34-test and real-Firebase/device results apply to v0.2 only. The
-new navigation and screens will require updated visual baselines during the
-later testing pass. A Mac runner is needed to compile the current iOS sources.
+- Open App Distribution in the Firebase console and select **Get started** for
+  the registered Android app. Then `npm run upload:android` uploads the build
+  without adding recipients. Tester selection/invitations remain owner choices.
+- Back up `.cache/signing/` and `app/android/key.properties` securely. These
+  private files are ignored and never uploaded through source control.
+- Connect/unlock a paired iPhone for local signing/install, or supply an Apple
+  distribution team/profile for TestFlight/App Store, universal links and APNs.
+- Complete store enrollment, production attestation/provider requirements and
+  any required terms. For background push only, opt into billing, provision
+  credentials, deploy the optional backend and enable its client flag.
+- Review the published branch. The connected GitHub integration cannot open a
+  PR (HTTP 403), and browser access is unavailable. Source publication itself
+  succeeded through the existing SSH identity.
 
-## Remaining product decisions
+## Scope and verification boundary
 
-Friends/social graphs and reviews remain deferred. A commercial venue/events
-provider, verified current prices/access and authoritative route-backed ranking
-are separate from the implemented free lookup and host-review flow. Background
-push/store distribution require external activation. Automatic reservations,
-payments and private-note persistence are not part of this application.
+No tests or golden baselines were written or changed. Local analysis and release
+compilation passed. The existing CI workflow ran its existing suites: rules
+passed; the old Flutter widget/golden checks include stale selectors/baselines
+and missing plugin mocks. Their update is deferred as requested; see
+[verification](VERIFICATION.md) for exact results.
+
+New device flows and actual local inference have not been exercised on hardware.
+The region remains Toronto. Independent venue verification, commercial provider
+contracts, bookings, payments, contact imports and chat are separate product
+choices, not unfinished dependencies of this planning experience.

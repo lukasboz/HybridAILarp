@@ -78,9 +78,9 @@ App Check’s production web key excludes localhost. Live AI on localhost needs 
 
 ## iPhone from Linux
 
-Flutter’s native iOS compilation requires **macOS and Xcode**, supplied here by GitHub’s hosted Mac runner. The [hosted workflow](https://github.com/lukasboz/HybridAILarp/actions/runs/44657697039) passed web verification, Android compilation and the arm64 iOS development build.
+Flutter’s native iOS compilation requires **macOS and Xcode**, supplied by the hosted Mac runner. The current build result and artifact are recorded in [release handoff](docs/RELEASE.md). The workflow preserves an unsigned development `.app` tarball for local signing.
 
-[The CI workflow](.github/workflows/flutter.yml) produces an unsigned development artifact. Download it and unpack its tarball to `artifacts/ios/`, then connect and unlock a paired iPhone and run `bash scripts/install-ios.sh`. The helper refreshes its public Firebase data asset, and `xtool` signs the app locally before installing; Apple credentials stay off the hosted runner. Installation succeeded and the user confirmed that the dashboard opens after trusting their development certificate. The Firebase-configured update was installed and real iPhone plan creation verified. The latest v0.2.1 AI capacity fix is built and awaits its final on-phone check. The development artifact uses App Check’s debug provider, whose device token needs private registration for protected services.
+Download and unpack it to `artifacts/ios/`, connect and unlock a paired iPhone, then run `bash scripts/install-ios.sh`. The helper refreshes its public Firebase data asset and `xtool` signs locally; Apple credentials stay off the hosted runner. The development artifact uses App Check’s debug provider, whose device token needs private registration for protected services. Production distribution needs the matching Apple team/provisioning and production attestation setup. Older phone observations are retained only as historical evidence in [verification](docs/VERIFICATION.md).
 
 ## Repository layout
 

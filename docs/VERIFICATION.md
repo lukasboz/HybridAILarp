@@ -1,6 +1,6 @@
 # v0.4 implementation and release — November 24, 2026
 
-No tests were written or run for this implementation pass, as requested. Existing test files and visual baselines were left unchanged. The historical results below apply to the earlier application.
+No tests were written or updated for this implementation pass, as requested. Existing test files and visual baselines were left unchanged. Local functional suites were not run; publishing the branch triggered the pre-existing CI workflow. The historical results below apply to the earlier application.
 
 - Flutter 3.50.1 / Dart 3.14 static analysis: no issues.
 - Web release compilation and Wasm compatibility dry run: succeeded.
@@ -8,7 +8,8 @@ No tests were written or run for this implementation pass, as requested. Existin
 - Firestore rules syntax validation: passed through Firebase. Static authorization review is recorded in `rules-audit.json`; it is not a substitute for the deferred authorization checks.
 - Auth, Firestore rules/indexes and Remote Config deployments: succeeded. Hosting status is recorded in RELEASE.md.
 - JavaScript/Python syntax checks and `git diff --check`: passed.
-- iOS: current source is published for Mac CI compilation. See RELEASE.md for the final build result and local installation instructions; no physical-device claim is made.
+- iOS: the [Mac job](https://github.com/lukasboz/HybridAILarp/actions/runs/45330958856/job/138231793468) passed for source commit `6a573a7d85fdf3ec00a8a877cd63377d19c6bcb8`. The downloaded artifact digest matched GitHub. Its ARM64 Mach-O app is version 0.4.0/build 5 and includes LiteRT-LM frameworks. The public Firebase asset was refreshed locally for signing. Current app: `artifacts/ios/Runner.app`; configured unsigned archive: `artifacts/ios/MeetHalfway-0.4.0-configured-unsigned-app.tar.gz`. No physical-device claim is made.
+- Existing CI: rules job passed; Flutter suite reported 29 passes and 5 failures. Four screenshot baselines differ after the new navigation/screens, and the cloud-drafting widget test refers to the old control. The harness also lacks connectivity plugin mocks. No test or golden changes were made.
 - Functional flows, model downloads/inference, offline reloads, physical-device validation and updated goldens remain deferred. No prior v0.2 result is evidence that these new flows were exercised.
 
 
@@ -31,7 +32,7 @@ The canonical application is now `app/`. Results below concern that application 
 | Web | Release web build succeeds, including the Wasm compatibility dry run. It is packaged in `dist/`; the HTTP preview on port 4173 serves the Flutter bootstrap successfully. |
 | Browser walkthrough | Attempted through the cloud-desktop skill. CUA returned no browsers and `The browser access host is unavailable`. No live browser walkthrough or browser screenshot is claimed. Generated widget screenshots were visually inspected. |
 | iPhone connection | Pairing validated and installation succeeded on November 20, iOS 26.5. Later diagnostic connections intermittently returned lockdownd `-8`. The user has taken the phone while the AI fix builds; the final installation/check requires its return. |
-| Native iOS | The main-branch Firebase-configured app installed successfully through local `xtool` signing. The user created a real live plan, confirmed by a server read. Fixed v0.2.1 build 3 compiled in [CI](https://github.com/lukasboz/HybridAILarp/actions/runs/44749125076) and is prepared at `artifacts/ios/Runner.app`; its on-phone AI/confirmation check is pending. |
+| Native iOS | The main-branch Firebase-configured app installed successfully through local `xtool` signing. The user created a real live plan, confirmed by a server read. Fixed v0.2.1 build 3 compiled in [CI](https://github.com/lukasboz/HybridAILarp/actions/runs/44749125076) and is retained as the previous-version backup; its on-phone AI/confirmation check was pending at that time. |
 | Firebase client config | Official Firebase plugin authenticated; public native configurations retrieved into ignored files. The iPhone uses a separate development registration matching its observed `XTL-TEAMID.` signed identifier. Its debug token was registered after explicit user approval. A protected limited-use token exchange succeeded. No token is committed. |
 | Native Firebase SDK flow | `flutter drive` integration test passed against local Auth + Firestore emulators using four independent native SDK clients. Verified anonymous IDs, outsider denials, invitation joins/rejoins, three shared cards, host option, proposal resets, forged/stale vote denials and unanimous confirmation observed by another client. `app/build/integration_response_data.json` records the result. The demo project blocks model requests and skips production Remote Config. |
 | Production Firebase services | Real Android SDK tests passed Auth, App Check, server-backed approved-card writes/reads and AI drafting. The v0.2.1 test exercised a 45-second primary timeout and a successful `gemini-3.5-flash-lite` fallback; returned preferences validated. Synthetic test documents were removed. An iPhone-registration server probe reproduced Gemini 3.8 high-demand HTTP 500 and succeeded with the fallback; that is backend evidence, not a successful native iPhone AI draft. AI Logic App Check enforcement remains enabled. |
