@@ -4,7 +4,7 @@
 
 MeetHalfway helps a group choose an activity that respects everyone’s budget, travel limit, availability and interests. Its visual reference is [Yumi’s web dashboard](https://www.aarushagarwal.dev/projects/Yumi): a pale-blue canvas, translucent navigation, ice-blue glass orb, activity-photo orbit and floating composer.
 
-The canonical application is **[`app/`](app/)**. All three platforms use the same Dart widgets, bundled Inter fonts, icons, photos, controls and planner. Layout changes depend on viewport size, not operating system. Phone navigation becomes a sidebar at 760 logical pixels. Cloud preference drafting and shortlist explanations require separate, explicit consent.
+The canonical application is **[`app/`](app/)**. All three platforms use the same Dart widgets, bundled Inter fonts, icons, photos, controls and planner. Layout changes depend on viewport size, not operating system. Phone navigation becomes a sidebar at 760 logical pixels. Optional downloaded models draft preferences on the device. Cloud preference drafting and shortlist explanations require separate, explicit consent.
 
 ## Run
 
@@ -22,24 +22,46 @@ bash scripts/flutter.sh analyze
 bash scripts/flutter.sh test
 bash scripts/flutter.sh build web --release --no-web-resources-cdn
 python3 scripts/package-flutter-web.py
-bash scripts/flutter.sh build apk --debug
+bash scripts/flutter.sh build apk --debug --target-platform android-arm64
 ```
 
 The web build is packaged in `dist/`, retaining the existing Firebase Hosting target. The APK is `app/build/app/outputs/flutter-apk/app-debug.apk`. Root `npm run dev`, `build`, `check`, `test` and `build:android` invoke these Flutter workflows. `npm run preview` serves a packaged build on port 4173.
 
 ## What is implemented
 
-- Responsive discovery dashboard with tappable activity orbit, sample participants and a plan composer.
-- Local plans, sample perspectives, manual preference editing and review before sharing.
-- Deterministic hard-limit filtering and ranking that prioritizes the least-satisfied person.
-- Host-provided activity options, rejected-option explanations, revision-bound voting and unanimous confirmation.
-- Firebase anonymous Auth, live Firestore rooms and invitations (renewed by the host before they expire), App Check, Remote Config, and Firebase AI Logic adapters.
-- Plan details with an illustrative travel map, access and setting labels, and a plain notice whenever the group decision reopens.
-- Explicitly approved cloud note-to-card drafting and optional cloud shortlist explanations. Temporary model failures use a supported fallback; receipts identify the model used. Raw notes are not saved by the app.
-- Calendar `.ics` sharing, plan and invitation sharing/copying, and local feedback for future preferences.
-- Contract tests against the original shared planner fixtures, consent tests and phone/desktop visual baselines.
+- One responsive Flutter UI on web, Android and iOS, with sample and local plans.
+- Reviewed preference cards, deterministic hard-limit filtering, fair ranking,
+  revision-bound voting and unanimous confirmation.
+- Live Firestore rooms, expiring/revocable invitation links, host transfer,
+  leave/remove/delete flows, display-name changes and editable host activities.
+- Optional **on-device note drafting**: downloadable Qwen3 0.6B on ARM64 Android
+  and iOS; a Gemma 4 E2B web build on capable WebGPU browsers. Download progress,
+  cancellation, removal and capability messages are included. Notes never fall
+  back to cloud automatically. Manual preferences remain available.
+- Separately approved Firebase cloud drafting and shortlist explanations.
+- Free nearby-place lookup through OpenStreetMap/Overpass, with source and
+  retrieval details. A host reviews cost, hours, setting and access before import.
+- On-demand sourced transit/walking/cycling routes through Transitous, alongside
+  the planner's clearly labelled travel estimates.
+- Email/password account creation and recovery, guest linking that preserves the
+  UID, private preference sync, data export and account deletion.
+- Live Updates, connectivity notices, and an optional FCM background notification
+  backend. The latter requires billing/credentials before activation.
+- Two- or three-stop itinerary proposals with cumulative budget/travel and
+  schedule checks, shared revision-bound votes, calendar export and sharing.
+- Offline web app-shell caching after the first packaged load; native local plans
+  and downloaded models remain available offline.
+- Release-signing configuration, native invitation handling and a generator for
+  verified app-link documents. Publishing requires real signing identities.
 
-The twelve Toronto activities are **sample data**, not live discovery. Their photos, prices, hours, access and travel are illustrative or estimated. Learned account profiles, a friends graph, live event/venue search and multi-stop itineraries remain separate product work.
+The bundled twelve Toronto activities remain **sample data**. Place search is
+real OSM data; prices, opening windows, quietness and access are host-reviewed,
+not live commercial availability. Route checks do not silently overwrite the
+planner's estimates. Friends/reviews and automatic bookings remain out of scope.
+
+This is the **v0.3.0 implementation pass**. Tests and physical-device verification
+of these additions are deferred; historical v0.2 results do not validate them.
+See [current status](docs/STATUS.md) and [platform setup](docs/PLATFORMS.md).
 
 ## Firebase
 

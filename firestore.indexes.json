@@ -1,1 +1,1 @@
-{"indexes":[],"fieldOverrides":[]}
+{"indexes":[],"fieldOverrides":[{"collectionGroup":"planInvites","fieldPath":"fromId","indexes":[{"order":"ASCENDING","queryScope":"COLLECTION"},{"order":"DESCENDING","queryScope":"COLLECTION"},{"order":"ASCENDING","queryScope":"COLLECTION_GROUP"}]}]}

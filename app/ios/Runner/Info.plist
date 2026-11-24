@@ -70,5 +70,22 @@
 	<array>
 		<string>https</string>
 	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>app.meethalfway.mobile</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>meethalfway</string>
+			</array>
+		</dict>
+	</array>
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>

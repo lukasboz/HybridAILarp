@@ -1,0 +1,5 @@
+// Copy to Distribution.xcconfig only for paid-team, provisioned distribution.
+// Keep the existing development build usable without restricted entitlements.
+CODE_SIGN_ENTITLEMENTS = Runner/Distribution.entitlements
+APS_ENVIRONMENT = production
+// Set DEVELOPMENT_TEAM in Xcode or pass it to xcodebuild for your team.

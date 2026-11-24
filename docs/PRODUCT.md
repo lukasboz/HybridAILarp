@@ -6,7 +6,7 @@
 
 MeetHalfway turns a group’s separate preferences into a real shared decision. The first audience is Toronto friends, roommates and small social groups who want an inexpensive afternoon or evening together and have different budgets, interests, starting areas and energy levels. The primary outcome is a mutually accepted activity and a calendar invitation.
 
-The shared Flutter app uses optional cloud AI with explicit consent. A person may ask the model to draft a preference card from a note, edit it, then review exactly what is shared. Cloud shortlist explanations require separate consent. Manual controls and deterministic planning work without AI. Raw notes are not saved by MeetHalfway.
+The shared Flutter app offers downloaded local drafting and optional cloud AI with explicit consent. A person may ask the model to draft a preference card from a note, edit it, then review exactly what is shared. Cloud shortlist explanations require separate consent. Manual controls and deterministic planning work without AI. Raw notes are not saved by MeetHalfway.
 
 ## Why someone would use it twice
 
@@ -34,13 +34,13 @@ The host supplies a title, date and first name. A live room uses an anonymous Fi
 
 The local exploration mode is a separate choice that stores the room on the current device and supports sample participants. It must never present its invitation as a real cross-device link.
 
-Anonymous identity is convenient but lacks account recovery after browser data is lost. Durable sign-in and guest-account linking are a later product improvement. Room ownership cannot be transferred in this version.
+Anonymous identity is convenient but lacks account recovery after browser data is lost. Email/password account linking preserves a guest’s UID and memberships; account defaults sync privately. Hosts can transfer ownership to another current member. An existing-account sign-in is blocked until a guest preserves or leaves their rooms.
 
 ### Personal preferences
 
 The person selects a coarse Toronto neighbourhood, a hard spending ceiling, a hard travel limit, transport mode, available time range, interests, and any quiet/indoor/confirmed-step-free requirements. The private note is optional and memory-only. It is not stored in Firestore or local storage.
 
-After an explicit disclosure and affirmative consent, Firebase AI Logic can extract an editable card using a cloud model. Without that consent the note is not transmitted. Manual controls remain available. The Flutter client does not implement on-device inference.
+After an explicit disclosure and affirmative consent, Firebase AI Logic can extract an editable card using a cloud model. Without that consent the note is not transmitted. Manual controls remain available. An optional downloaded model can also draft the card locally, with capability checks and no automatic cloud fallback.
 
 The review screen lists exactly what will be shared, including the budget amount and neighbourhood. Sharing is an affirmative action. Updating the card reopens the group decision and invalidates previous votes.
 
@@ -80,7 +80,7 @@ Changing a card, adding a person, or adding an activity reopens the decision. Th
 
 A confirmed plan includes the day, Toronto local start time, venue, estimated cost and reminders to verify details or arrange booking. Calendar export includes the America/Toronto time zone and daylight-saving rules. Flutter sharing integrations use available OS/browser share targets, with invitation copying as a fallback.
 
-There is no automatic reservation, payment, email, SMS or contact upload. Confirmation means the participants accepted a plan, not that a venue accepted a booking.
+There is no automatic reservation, payment, plan email, SMS or contact upload. Account verification and password recovery use Firebase email. Confirmation means the participants accepted a plan, not that a venue accepted a booking.
 
 ### Feedback
 
@@ -109,4 +109,4 @@ Do not claim a percentage improvement without collecting a baseline. Report the 
 
 ## Scope after the hackathon
 
-First add verified venue data and reliable routes, edit/remove/leave-room flows, account linking, invite revocation, cloud retention/deletion, and lifecycle observability that excludes raw notes. Add weather-aware alternatives only with sourced weather data. Push notifications, chat, automatic reservations, contacts access and payments are separate decisions, not necessary dependencies of a good first plan.
+The v0.3 implementation adds free place/route lookup, lifecycle flows, account linking, invite revocation, export/deletion, optional push and two/three-stop planning. Next consider a commercial data provider with independently verified prices/access, authoritative route-backed ranking, friends and reviews. Add weather-aware alternatives only with sourced weather data. Push notifications, chat, automatic reservations, contacts access and payments are separate decisions, not necessary dependencies of a good first plan.

@@ -4,9 +4,22 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'domain.dart';
 import 'firebase_service.dart';
+import 'firebase_accounts.dart';
+import 'firebase_plans.dart';
+import 'local_ai.dart';
+import 'discovery_service.dart';
+import 'notifications.dart';
+import 'social_service.dart';
+
+part 'store_features.dart';
+part 'routing_store.dart';
+part 'social_store.dart';
 
 class MeetStore extends ChangeNotifier {
   MeetStore(this.data, this.preferences, this.cloud) {
@@ -36,6 +49,16 @@ class MeetStore extends ChangeNotifier {
       /* Invalid saved defaults are ignored. */
     }
     defaultCard ??= data.defaultCard;
+    try {
+      final savedHistory = preferences.getString('meet.flutter.history');
+      if (savedHistory != null) {
+        history.addAll(List<Json>.from(jsonDecode(savedHistory) as List));
+      }
+    } catch (_) {
+      /* Old history must not block the planner. */
+    }
+    localAI.addListener(changed);
+    notifications.addListener(changed);
   }
   static Future<MeetStore> load() async {
     final data = Experience.fromJson(
@@ -52,6 +75,29 @@ class MeetStore extends ChangeNotifier {
   final Experience data;
   final SharedPreferences preferences;
   final FirebaseService cloud;
+  late final LocalAI localAI = LocalAI();
+  late final DiscoveryService discovery = DiscoveryService(preferences);
+  late final NotificationService notifications = NotificationService(
+    cloud,
+    preferences,
+  );
+  bool offline = false, liveFromCache = false;
+  StreamSubscription<List<ConnectivityResult>>? _network;
+  StreamSubscription<QuerySnapshot<Json>>? _liveList;
+  StreamSubscription<DocumentSnapshot<Json>>? _profile;
+  final Map<String, StreamSubscription<QuerySnapshot<Json>>> _eventFeeds = {};
+  final List<Json> activityFeed = [];
+  String? serviceNotice;
+  String? pendingFriendLink, pendingRoomId;
+  bool routingBusy = false;
+  double routingProgress = 0;
+  int _routingGeneration = 0;
+  final List<Json> friends = [], planInvites = [], history = [];
+  final Set<String> _archiving = {};
+  StreamSubscription<QuerySnapshot<Json>>? _friendsFeed,
+      _planInvitesFeed,
+      _historyFeed;
+  void changed() => notifyListeners();
   late String identity, name;
   String? loadNotice;
   PreferenceCard? defaultCard;
@@ -69,7 +115,7 @@ class MeetStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  Planner get planner => Planner(data);
+  Planner get planner => Planner(data, room: room);
   String get myId => room?.local == true
       ? (room!.members.any((m) => m.id == persona) ? persona : identity)
       : (cloud.connected ? cloud.uid : identity);
@@ -120,16 +166,26 @@ class MeetStore extends ChangeNotifier {
               if (previous?.id != fresh.id) return;
               if (previous!.proposal != null && fresh.proposal == null) {
                 reopenedNotice = _reopened(
-                  fresh.members.length > previous.members.length
+                  fresh.ownerId != previous.ownerId
+                      ? 'The host changed'
+                      : fresh.title != previous.title ||
+                            fresh.date != previous.date
+                      ? 'The plan details changed'
+                      : fresh.members.length > previous.members.length
                       ? 'Someone joined'
+                      : fresh.members.length < previous.members.length
+                      ? 'Someone left the plan'
                       : fresh.options.length != previous.options.length
-                      ? 'A new idea was added'
-                      : 'Someone updated their preferences',
+                      ? 'The activity options changed'
+                      : 'The group’s shared details changed',
                 );
               } else if (fresh.proposal != null) {
                 reopenedNotice = null;
               }
               room = fresh;
+              if (fresh.status == 'confirmed') {
+                unawaited(rememberCurrentPlan().catchError((Object _) {}));
+              }
               streamError = null;
               if (explanationRevision != fresh.revision) explanations = [];
               notifyListeners();
@@ -224,6 +280,8 @@ class MeetStore extends ChangeNotifier {
     liveRooms
       ..clear()
       ..addAll(fresh);
+    await _watchLivePlans();
+    openPendingRoom();
     notifyListeners();
   }
 
@@ -266,6 +324,7 @@ class MeetStore extends ChangeNotifier {
     }
     defaultCard = card;
     await preferences.setString('meet.flutter.card', jsonEncode(card.toJson()));
+    if (cloud.hasAccount) await cloud.saveProfile(name, card);
     notifyListeners();
   }
 
@@ -371,6 +430,22 @@ class MeetStore extends ChangeNotifier {
 
   Future<void> confirm() async {
     final current = room!;
+    if (current.proposal?.stops.isNotEmpty == true) {
+      final activities = proposalActivities(
+        current,
+        planner.catalogFor(current),
+      );
+      final itinerary = planner.itinerary(activities, current.members);
+      if (!itinerary.eligible ||
+          itinerary.stops.length != current.proposal!.stops.length ||
+          !itinerary.stops.indexed.every(
+            (entry) => mapEquals(entry.$2, current.proposal!.stops[entry.$1]),
+          )) {
+        throw StateError(
+          'The itinerary changed or no longer fits. Review a new proposal before confirming.',
+        );
+      }
+    }
     if (!isHost ||
         !current.canConfirm ||
         !ranked.any((p) => p.candidate.id == current.proposal!.candidateId)) {
@@ -381,6 +456,7 @@ class MeetStore extends ChangeNotifier {
     if (current.local) {
       current.status = 'confirmed';
       await persist();
+      await rememberCurrentPlan();
       notifyListeners();
     } else {
       await cloud.confirm(current);
@@ -389,6 +465,13 @@ class MeetStore extends ChangeNotifier {
 
   Future<PreferenceCard> extract(String note, PreferenceCard base) async {
     final (card, receipt) = await cloud.extractNote(note, base, data);
+    receipts.add(receipt);
+    notifyListeners();
+    return card;
+  }
+
+  Future<PreferenceCard> extractLocal(String note, PreferenceCard base) async {
+    final (card, receipt) = await localAI.draft(note, base, data);
     receipts.add(receipt);
     notifyListeners();
     return card;
@@ -421,6 +504,7 @@ class MeetStore extends ChangeNotifier {
       'meet.flutter.card',
       jsonEncode(defaultCard!.toJson()),
     );
+    if (cloud.hasAccount) await cloud.saveProfile(name, defaultCard!);
     notifyListeners();
   }
 
@@ -430,7 +514,12 @@ class MeetStore extends ChangeNotifier {
     for (final key
         in preferences
             .getKeys()
-            .where((k) => k.startsWith('meet.flutter.'))
+            .where(
+              (k) =>
+                  k.startsWith('meet.flutter.') ||
+                  k.startsWith('meet.route.') ||
+                  k.startsWith('meet.discovery.'),
+            )
             .toList()) {
       await preferences.remove(key);
     }
@@ -441,6 +530,7 @@ class MeetStore extends ChangeNotifier {
     room = null;
     tab = 'discover';
     receipts.clear();
+    history.removeWhere((entry) => entry['cloud'] != true);
     explanations = [];
     reopenedNotice = null;
     await preferences.setString('meet.flutter.identity', identity);
@@ -459,6 +549,19 @@ class MeetStore extends ChangeNotifier {
   @override
   void dispose() {
     _subscription?.cancel();
+    _network?.cancel();
+    _liveList?.cancel();
+    _profile?.cancel();
+    _friendsFeed?.cancel();
+    _planInvitesFeed?.cancel();
+    _historyFeed?.cancel();
+    for (final feed in _eventFeeds.values) {
+      feed.cancel();
+    }
+    localAI.removeListener(changed);
+    notifications.removeListener(changed);
+    notifications.dispose();
+    unawaited(localAI.cancel());
     super.dispose();
   }
 }
@@ -467,6 +570,23 @@ String _reopened(String reason) =>
     '$reason, so the decision reopened. Earlier votes no longer count.';
 
 String friendlyError(Object error) {
+  if (error is FirebaseAuthException) {
+    return switch (error.code) {
+      'email-already-in-use' => 'That email already has an account. Sign in instead, or use a different email to preserve this guest’s plans.',
+      'invalid-email' => 'Enter a valid email address.',
+      'weak-password' =>
+        'Choose a stronger password with at least six characters.',
+      'invalid-credential' ||
+      'user-not-found' ||
+      'wrong-password' => 'The email or password was not accepted.',
+      'operation-not-allowed' => 'Email sign-in has not been enabled for this build’s Firebase project yet.',
+      'too-many-requests' =>
+        'Too many attempts. Wait a little before trying again.',
+      'requires-recent-login' =>
+        'Sign in again before changing or deleting this account.',
+      _ => 'Sign-in didn’t go through. Check your connection and try again.',
+    };
+  }
   if (error is CloudAIException) return error.message;
   if (error is FormatException) return error.message;
   if (error is StateError) return error.message.toString();

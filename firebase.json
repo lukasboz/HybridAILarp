@@ -4,8 +4,9 @@
     "public": "dist",
     "ignore": [
       "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      "**/.DS_Store",
+      "**/.git/**"
     ],
     "headers": [
       {
@@ -17,7 +18,7 @@
           },
           {
             "key": "Referrer-Policy",
-            "value": "no-referrer"
+            "value": "strict-origin-when-cross-origin"
           },
           {
             "key": "Permissions-Policy",
@@ -31,6 +32,15 @@
           {
             "key": "Cache-Control",
             "value": "no-cache"
+          }
+        ]
+      },
+      {
+        "source": "/.well-known/**",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
           }
         ]
       }
@@ -50,7 +60,8 @@
   },
   "auth": {
     "providers": {
-      "anonymous": true
+      "anonymous": true,
+      "emailPassword": true
     }
   },
   "remoteconfig": {
@@ -71,5 +82,17 @@
       "port": 4000
     },
     "singleProjectMode": true
-  }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "notifications",
+      "runtime": "nodejs24",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "*-debug.log"
+      ]
+    }
+  ]
 }

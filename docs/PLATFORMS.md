@@ -1,37 +1,89 @@
-# Platform builds
+# Platforms and distribution
 
-The active UI is Flutter for all three targets. The old SwiftUI, Compose and HTML clients are retained reference implementations.
+One Flutter implementation in `app/` supplies all product screens. Layouts
+respond to viewport size rather than OS. Platform integrations handle local
+inference, storage, links, sharing, account SDKs and notification permissions.
 
 ## Web
 
-Run `bash scripts/flutter.sh run -d web-server --web-hostname 0.0.0.0 --web-port 4173` or build with `npm run build`. Flutter compiles into `app/build/web`; the packaging helper copies it to `dist/` for the existing Firebase Hosting target. No deployment is performed by building. The first web load requires network access; a new offline asset cache is not part of this migration.
+```sh
+npm run build
+npm run preview
+```
+
+The release is packaged in `dist/`. Its versioned `sw.js` caches the app shell
+after the first online visit. The downloaded model is stored separately by
+Flutter Edge AI. Preparing a local model needs a secure WebGPU browser and about
+2 GB for the dedicated Gemma 4 E2B web build; runtime/model setup must happen
+online before offline inference is available. Ordinary manual planning does not
+load the AI CDN runtime. Unsupported browsers retain manual and opt-in cloud AI.
+
+The build synchronizer copies cache helpers from the locked dependency and
+writes public Firebase messaging config. Web push is disabled unless the
+optional backend and public VAPID key are configured. FCM has its own scoped
+worker, separate from the offline shell worker. The web engine is pinned to
+`@litert-lm/core@0.18.0`.
 
 ## Android
 
-Use a complete Java 21 JDK, Android platform 36, Flutter 3.50.1 and the standard generated Gradle runner. The workspace wrapper detects the tools installed in `.cache/`.
-
 ```sh
-bash scripts/flutter.sh build apk --debug
+npm run build:android
 ```
 
-APK: `app/build/app/outputs/flutter-apk/app-debug.apk`. Package: `app.meethalfway.mobile`. An Android emulator can validate the app without a physical phone; actual native screenshots must still be collected. Release signing is separate from the generated development/debug configuration.
+The current local-runtime build targets ARM64 Android 11+ (`minSdk 30`). Its
+Qwen3 0.6B download is about 345 MB and uses the conservative CPU backend. APK:
+`app/build/app/outputs/flutter-apk/app-debug.apk`; application ID:
+`app.meethalfway.mobile`. Other ABIs must retain the manual app through a
+separate build without this native engine, rather than claim working inference.
 
-Native Firebase registration files and App Check setup are needed for live services. Manual/sample plans work without them. The Flutter implementation uses opt-in cloud AI and does not require Gemini Nano hardware.
+To prepare distribution, copy `app/android/key.properties.example` to ignored
+`app/android/key.properties`, with your actual keystore and passwords, then run
+`npm run build:android:release`. Release builds no longer silently use debug keys.
+Never commit or upload signing keys through source control.
+
+Invitation handling supports the `meethalfway:` scheme and verified HTTPS links
+on the configured Hosting domain. Verification needs the actual release signing
+certificate fingerprint and a hosted assetlinks file.
 
 ## iOS
 
-Flutter’s native app is `app/ios/`. Build with macOS and Xcode. The hosted Mac [successfully compiled an arm64 development app](https://github.com/lukasboz/HybridAILarp/actions/runs/44657697039). No local Mac is required for that workflow.
+The shared Flutter source and ARM64 LiteRT-LM runtime require a Mac/Xcode runner
+to compile. Qwen3 0.6B uses CPU; the baseline deployment target remains iOS 15.
+The existing CI job builds an unsigned development app. It has not been run for
+this implementation pass yet. Download its preserved `.app` tarball and use the
+existing `scripts/install-ios.sh` on Linux for local development signing/install.
+
+Custom-scheme invitations work without a paid domain-link entitlement. For
+universal links, push and store distribution, provide a paid Apple team and
+matching provisioning profile. Copy
+`app/ios/Flutter/Distribution.example.xcconfig` to ignored `Distribution.xcconfig`
+to opt into `Runner/Distribution.entitlements`. Set `DEVELOPMENT_TEAM` in the
+signing environment. Use `APS_ENVIRONMENT=development` for an appropriately
+provisioned development push build; distribution defaults to `production`.
+Configure the matching APNs credential in Firebase before enabling push.
+
+The Swift package/plugin dependencies are resolved by Flutter and the native
+asset build hook. No manual PBX dependency edits are required.
+
+## Verified invitation files
+
+After building the website, supply real signing identities:
 
 ```sh
-bash scripts/flutter.sh build ios --release --no-codesign
+node scripts/prepare-app-links.mjs --android-sha256 YOUR_COLON_SEPARATED_FINGERPRINT
+node scripts/prepare-app-links.mjs --apple-team-id YOUR_TEAM_ID --ios-bundle-id app.meethalfway.mobile
 ```
 
-The current workflow produces an unsigned AOT development app with an explicitly selected App Check debug provider. Download its artifact and unpack its tarball under `artifacts/ios/`, connect and unlock the paired phone, then run `bash scripts/install-ios.sh`. The helper refreshes its public Firebase asset; Linux `xtool install` signs and installs it with the configured Apple account. Installation succeeded on the iOS 26.5 phone, and the user confirmed that the dashboard opens after trusting their development certificate. The Firebase-configured update installed successfully and real iPhone plan creation was verified. The latest v0.2.1 AI fix awaits final on-phone verification. Native Firebase/App Check configuration must match the resulting signed bundle ID; the separate development registration now does.
+The generator rejects malformed identities and writes only the requested
+platform files in `dist/.well-known/`. Deploy those files with Hosting and the
+matching signed applications. Android Play App Signing uses the app-signing
+certificate, not the upload certificate. Configure equivalent domains in the
+manifests/entitlements when changing the Hosting URL.
 
-The installed Linux xtool/Darwin SDK does not compile Flutter’s Xcode runner; this installation route uses the actual hosted Mac compilation. iPhone Safari can also exercise the shared web build.
+## Build and verification boundary
 
-## Visual consistency
-
-Shared fonts, icons, control theme and painted glass avoid platform-specific UI substitutions. The viewport selects sidebar versus bottom navigation. Widget golden tests compare both iOS and Android target-platform settings to the same phone baseline and also cover desktop. These are renderer tests, not physical cross-device screenshots. Text scaling and narrow layouts are tested without disabling accessibility.
-
-See [Flutter migration and configuration](FLUTTER.md) for full setup, data boundaries and remaining limits.
+This pass checks Dart analysis and compilation, not functional behavior. Tests,
+new screenshots/goldens, model-quality measurements, offline reloads, browser
+and phone permissions, real link verification, cross-device consensus and store
+submission remain for the later testing/activation phase. Do not infer physical
+platform verification from widget renderer tests or historical v0.2 results.

@@ -8,6 +8,7 @@ import 'design.dart';
 import 'domain.dart';
 import 'orbit.dart';
 import 'store.dart';
+import 'feature_screens.dart';
 import 'travel_map.dart';
 
 class PlanDialog extends StatelessWidget {
@@ -352,7 +353,7 @@ class _PreferencesEditorState extends State<PreferencesEditor> {
   }
 
   void change(PreferenceCard value) => setState(() => card = value);
-  Future<void> draft() async {
+  Future<void> draft({bool local = false}) async {
     if (note.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -361,10 +362,14 @@ class _PreferencesEditorState extends State<PreferencesEditor> {
       );
       return;
     }
-    if (!await cloudConsent(context, note: true) || !mounted) return;
+    if (!local && (!await cloudConsent(context, note: true) || !mounted)) {
+      return;
+    }
     setState(() => working = true);
     await perform(context, widget.store, () async {
-      final result = await widget.store.extract(note.text, card);
+      final result = local
+          ? await widget.store.extractLocal(note.text, card)
+          : await widget.store.extract(note.text, card);
       if (mounted) {
         setState(() {
           card = result;
@@ -468,14 +473,42 @@ class _PreferencesEditorState extends State<PreferencesEditor> {
             ),
             const SizedBox(height: 6),
             const Text(
-              'AI uses the cloud only after you agree. Your note stays here until then.',
+              'Local AI keeps your note on this device. Cloud AI sends it only after separate approval.',
               style: TextStyle(fontSize: 11, color: MH.secondary, height: 1.6),
             ),
             const SizedBox(height: 12),
             OutlinedButton.icon(
-              onPressed: working ? null : draft,
+              onPressed: working ? null : () => draft(),
               icon: const Icon(Icons.auto_awesome_outlined, size: 15),
-              label: Text(working ? 'Preparing your draft…' : 'Draft with AI'),
+              label: Text(
+                working ? 'Preparing your draft…' : 'Draft with cloud AI',
+              ),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: working
+                  ? null
+                  : () async {
+                      if (!widget.store.localAI.installed) {
+                        await showDialog<void>(
+                          context: context,
+                          builder: (_) => PlanDialog(
+                            title: 'Prepare local AI.',
+                            child: LocalAIPanel(store: widget.store),
+                          ),
+                        );
+                        if (!mounted) return;
+                        setState(() {});
+                        return;
+                      }
+                      await draft(local: true);
+                    },
+              icon: const Icon(Icons.phonelink_lock_outlined, size: 15),
+              label: Text(
+                widget.store.localAI.installed
+                    ? 'Draft on this device'
+                    : 'Set up local AI',
+              ),
             ),
           ],
         ),
@@ -700,7 +733,9 @@ Future<void> showIdea(
             ),
             _detail(
               Icons.schedule_outlined,
-              rank == null ? '90 minutes' : timeLabel(rank.start!),
+              rank == null
+                  ? '${idea.duration} minutes'
+                  : timeLabel(rank.start!),
             ),
             if (rank != null)
               _detail(
@@ -734,6 +769,12 @@ Future<void> showIdea(
           const SizedBox(height: 24),
           const Eyebrow('A fit for each person'),
           const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: () => showRoutes(context, store, idea),
+            icon: const Icon(Icons.route_outlined, size: 16),
+            label: const Text('Check sourced routes'),
+          ),
+          const SizedBox(height: 12),
           TravelMap(
             people: store.room!.members,
             activity: idea,
@@ -760,7 +801,9 @@ Future<void> showIdea(
                     ),
                   ),
                   Text(
-                    '${fit.score}/100 · ~${fit.travel} of ${person.card!.maxTravel} min',
+                    fit.travel == 9999
+                        ? 'Sourced route unavailable'
+                        : '${fit.score}/100 · ${store.planner.routed ? "" : "~"}${fit.travel} of ${person.card!.maxTravel} min',
                     style: const TextStyle(fontSize: 12, color: MH.secondary),
                   ),
                 ],
@@ -768,9 +811,23 @@ Future<void> showIdea(
             ),
         ],
         const SizedBox(height: 20),
+        if (idea.json['provider'] != null)
+          Text(
+            'Place source: ${idea.json["provider"]} · retrieved ${idea.json["retrievedAt"]}',
+            style: const TextStyle(fontSize: 11, color: MH.secondary),
+          ),
+        if (idea.json['sourceFacts'] is Map)
+          Text(
+            'Source-reported hours: ${idea.json['sourceFacts']['hours']}\nFee: ${idea.json['sourceFacts']['fee']} · Wheelchair access: ${idea.json['sourceFacts']['access']}',
+            style: const TextStyle(
+              fontSize: 11,
+              color: MH.secondary,
+              height: 1.6,
+            ),
+          ),
         Text(
           idea.source == 'host'
-              ? 'Activity details are host-provided. Travel is approximate. Verify current prices, hours and access before going.'
+              ? 'Activity details are host-provided. ${store.planner.routed ? "Travel uses sourced routes from neighbourhood centres." : "Travel is approximate."} Verify current prices, hours and access before going.'
               : 'Toronto sample idea. Prices, hours, access and travel are fixtures. The photo illustrates the category.',
           style: const TextStyle(
             fontSize: 11,
@@ -837,8 +894,15 @@ Future<void> showAddOption(BuildContext context, MeetStore store) =>
     );
 
 class AddOptionDialog extends StatefulWidget {
-  const AddOptionDialog({super.key, required this.store});
+  const AddOptionDialog({
+    super.key,
+    required this.store,
+    this.seed,
+    this.optionId,
+  });
   final MeetStore store;
+  final Json? seed;
+  final String? optionId;
   @override
   State<AddOptionDialog> createState() => _AddOptionDialogState();
 }
@@ -848,10 +912,30 @@ class _AddOptionDialogState extends State<AddOptionDialog> {
       venue = TextEditingController(),
       description = TextEditingController(),
       url = TextEditingController(),
-      cost = TextEditingController(text: '0');
+      cost = TextEditingController();
   String area = 'downtown', interest = 'art';
-  int opens = 960, closes = 1320, noise = 2;
+  int opens = 960, closes = 1320, noise = 2, duration = 90;
   bool indoor = true, stepFree = false, working = false;
+  @override
+  void initState() {
+    super.initState();
+    final seed = widget.seed;
+    if (seed == null) return;
+    name.text = seed['name'] as String? ?? '';
+    venue.text = seed['venue'] as String? ?? '';
+    description.text = seed['description'] as String? ?? '';
+    url.text = seed['url'] as String? ?? '';
+    cost.text = seed['cost']?.toString() ?? '';
+    area = seed['areaId'] as String? ?? area;
+    interest = (seed['tags'] as List?)?.firstOrNull as String? ?? interest;
+    opens = seed['opens'] as int? ?? opens;
+    closes = seed['closes'] as int? ?? closes;
+    noise = seed['noise'] as int? ?? noise;
+    indoor = seed['indoor'] as bool? ?? indoor;
+    stepFree = seed['stepFree'] == true;
+    duration = seed['duration'] as int? ?? 90;
+  }
+
   @override
   void dispose() {
     for (final c in [name, venue, description, url, cost]) {
@@ -862,7 +946,9 @@ class _AddOptionDialogState extends State<AddOptionDialog> {
 
   @override
   Widget build(BuildContext context) => PlanDialog(
-    title: 'Bring an idea to the table.',
+    title: widget.optionId == null
+        ? 'Bring an idea to the table.'
+        : 'Update this idea.',
     subtitle: 'Add an activity your group could actually do.',
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -881,6 +967,21 @@ class _AddOptionDialogState extends State<AddOptionDialog> {
           ),
         ),
         const SizedBox(height: 10),
+        if (widget.seed?['sourceFacts'] is Map) ...[
+          Text(
+            'OpenStreetMap reports:\nHours: ${widget.seed!['sourceFacts']['hours']}\nFee: ${widget.seed!['sourceFacts']['fee']}\nWheelchair access: ${widget.seed!['sourceFacts']['access']}',
+            style: const TextStyle(
+              fontSize: 12,
+              color: MH.secondary,
+              height: 1.6,
+            ),
+          ),
+          const Text(
+            'Confirm the date-specific hours, full cost and access with the venue, then enter the plan details below.',
+            style: TextStyle(fontSize: 11, color: MH.secondary),
+          ),
+          const SizedBox(height: 12),
+        ],
         DropdownButtonFormField<String>(
           style: MH.field,
           initialValue: area,
@@ -919,6 +1020,15 @@ class _AddOptionDialogState extends State<AddOptionDialog> {
               )
               .toList(),
           onChanged: (v) => setState(() => interest = v!),
+        ),
+        const SizedBox(height: 16),
+        DropdownButtonFormField<int>(
+          initialValue: duration,
+          decoration: const InputDecoration(labelText: 'Activity length'),
+          items: [30, 60, 90, 120, 150, 180, 210, 240]
+              .map((m) => DropdownMenuItem(value: m, child: Text('$m minutes')))
+              .toList(),
+          onChanged: (v) => setState(() => duration = v!),
         ),
         const SizedBox(height: 16),
         Row(
@@ -988,10 +1098,8 @@ class _AddOptionDialogState extends State<AddOptionDialog> {
               ? null
               : () async {
                   setState(() => working = true);
-                  final success = await perform(
-                    context,
-                    widget.store,
-                    () => widget.store.addOption({
+                  final success = await perform(context, widget.store, () {
+                    final option = <String, dynamic>{
                       'name': name.text.trim(),
                       'venue': venue.text.trim(),
                       'description': description.text.trim(),
@@ -1004,8 +1112,22 @@ class _AddOptionDialogState extends State<AddOptionDialog> {
                       'stepFree': stepFree ? true : null,
                       'opens': opens,
                       'closes': closes,
-                    }),
-                  );
+                      'duration': duration,
+                      for (final key in [
+                        'lat',
+                        'lng',
+                        'provider',
+                        'sourceUrl',
+                        'retrievedAt',
+                        'sourceFacts',
+                      ])
+                        if (widget.seed?.containsKey(key) == true)
+                          key: widget.seed![key],
+                    };
+                    return widget.optionId == null
+                        ? widget.store.addOption(option)
+                        : widget.store.updateOption(widget.optionId!, option);
+                  });
                   if (!context.mounted) return;
                   if (success) {
                     Navigator.pop(context);
@@ -1013,7 +1135,13 @@ class _AddOptionDialogState extends State<AddOptionDialog> {
                     setState(() => working = false);
                   }
                 },
-          child: Text(working ? 'Adding…' : 'Add this activity'),
+          child: Text(
+            working
+                ? 'Saving…'
+                : widget.optionId == null
+                ? 'Add this activity'
+                : 'Save activity',
+          ),
         ),
       ],
     ),

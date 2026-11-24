@@ -13,6 +13,7 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
 import 'domain.dart';
+import 'firebase_plans.dart';
 
 String randomId([int bytes = 18]) {
   final random = Random.secure();
@@ -23,9 +24,10 @@ String randomId([int bytes = 18]) {
 }
 
 class AIReceipt {
-  AIReceipt(this.action, this.model, this.milliseconds);
+  AIReceipt(this.action, this.model, this.milliseconds, {this.local = false});
   final String action, model;
   final int milliseconds;
+  final bool local;
 }
 
 class PlanExplanation {
@@ -167,7 +169,8 @@ class FirebaseService {
   );
 
   Future<void> connect() {
-    if (connected) return Future.value();
+    if (connected && auth.currentUser != null) return Future.value();
+    connected = false;
     return _connecting ??= _connect().whenComplete(() => _connecting = null);
   }
 
@@ -296,6 +299,7 @@ class FirebaseService {
       'expiresAt': Timestamp.fromDate(DateTime.now().add(inviteLifetime)),
     });
     await batch.commit();
+    await recordActivity(id, 'created', 0);
     return id;
   }
 
@@ -345,6 +349,10 @@ class FirebaseService {
       }
       rethrow;
     }
+    final joined = (await db.doc('rooms/$id').get()).data();
+    if (joined != null) {
+      await recordActivity(id, 'joined', joined['revision'] as int);
+    }
     return id;
   }
 
@@ -352,7 +360,16 @@ class FirebaseService {
   /// when the host shares a link that is about to expire.
   Future<String> invitationFor(PlanRoom room) async {
     await connect();
-    final token = room.inviteId;
+    final header =
+        (await db
+                .doc('rooms/${room.id}')
+                .get(const GetOptions(source: Source.server)))
+            .data();
+    if (header == null || header['deleting'] == true) {
+      throw StateError('This plan is unavailable.');
+    }
+    final token = header['lastJoinInviteId'] as String?;
+    final host = header['ownerId'] == uid;
     if (token == null) {
       throw StateError('This plan is still loading. Try again in a moment.');
     }
@@ -367,8 +384,8 @@ class FirebaseService {
     final fresh =
         expires != null &&
         expires.isAfter(DateTime.now().add(const Duration(days: 1)));
-    if (fresh || (expires != null && room.ownerId != uid)) return token;
-    if (room.ownerId != uid) {
+    if (fresh || (expires != null && !host)) return token;
+    if (!host) {
       throw StateError(
         'This invitation has expired. Ask the host to share a new link.',
       );
@@ -377,7 +394,7 @@ class FirebaseService {
     batch.update(db.doc('rooms/${room.id}'), {'lastJoinInviteId': renewed});
     batch.set(db.doc('invites/$renewed'), {
       'roomId': room.id,
-      'title': room.title,
+      'title': header['title'],
       'createdBy': uid,
       'expiresAt': Timestamp.fromDate(DateTime.now().add(inviteLifetime)),
     });
@@ -390,6 +407,7 @@ class FirebaseService {
     final controller = StreamController<PlanRoom>();
     Json? header;
     var people = <Person>[], votes = <String, PlanVote>{}, options = <Json>[];
+    var routes = <String, Json>{};
     void emit() {
       if (header == null || controller.isClosed) return;
       final h = header!, ids = List<String>.from(h['memberIds'] as List);
@@ -417,6 +435,8 @@ class FirebaseService {
                 ),
           votes: votes,
           options: options,
+          travelSource: h['travelSource'] as String? ?? 'estimate',
+          routes: routes,
         ),
       );
     }
@@ -444,6 +464,10 @@ class FirebaseService {
         options = s.docs
             .map((d) => <String, dynamic>{'id': d.id, ...d.data()})
             .toList();
+        emit();
+      }, onError: controller.addError),
+      db.collection('rooms/$id/routes').snapshots().listen((s) {
+        routes = {for (final d in s.docs) d.id: d.data()};
         emit();
       }, onError: controller.addError),
     ];
@@ -496,6 +520,7 @@ class FirebaseService {
       'proposal': null,
     });
     await batch.commit();
+    await recordActivity(room.id, 'card', room.revision + 1);
   }
 
   Future<void> addOption(PlanRoom room, Json option) async {
@@ -522,9 +547,14 @@ class FirebaseService {
       'proposal': null,
     });
     await batch.commit();
+    await recordActivity(room.id, 'options', room.revision + 1);
   }
 
-  Future<void> propose(PlanRoom room, RankedPlan plan) async {
+  Future<void> propose(
+    PlanRoom room,
+    RankedPlan plan, {
+    List<Json> stops = const [],
+  }) async {
     await connect();
     await db.runTransaction((tx) async {
       final ref = db.doc('rooms/${room.id}'),
@@ -537,9 +567,15 @@ class FirebaseService {
       tx.update(ref, {
         'status': 'voting',
         'revision': revision,
-        'proposal': Proposal(plan.candidate.id, plan.start!, revision).toJson(),
+        'proposal': Proposal(
+          plan.candidate.id,
+          stops.isEmpty ? plan.start! : stops.first['startMinute'] as int,
+          revision,
+          stops: stops,
+        ).toJson(),
       });
     });
+    await recordActivity(room.id, 'proposal', room.revision + 1);
   }
 
   Future<void> vote(PlanRoom room, String choice) async {
@@ -549,11 +585,13 @@ class FirebaseService {
       ...PlanVote(choice, proposal.candidateId, proposal.revision).toJson(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
+    await recordActivity(room.id, 'vote', room.revision);
   }
 
   Future<void> confirm(PlanRoom room) async {
     await connect();
     await db.doc('rooms/${room.id}').update({'status': 'confirmed'});
+    await recordActivity(room.id, 'confirmed', room.revision);
   }
 
   Future<String> _requestModel(String selectedModel, String prompt) async {

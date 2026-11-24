@@ -66,7 +66,7 @@ jobs:
           flutter-version: '3.50.1'
           channel: stable
           cache: true
-      - run: bash scripts/flutter.sh build apk --debug
+      - run: bash scripts/flutter.sh build apk --debug --target-platform android-arm64
       - uses: actions/upload-artifact@v7
         with:
           name: android-debug-apk

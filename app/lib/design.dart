@@ -420,6 +420,9 @@ TextField sharedTextField({
   ValueChanged<String>? onSubmitted,
   TextInputType? keyboardType,
   TextCapitalization textCapitalization = TextCapitalization.none,
+  bool obscureText = false,
+  bool autocorrect = true,
+  bool enableSuggestions = true,
 }) => TextField(
   key: key,
   controller: controller,
@@ -431,6 +434,9 @@ TextField sharedTextField({
   onSubmitted: onSubmitted,
   keyboardType: keyboardType,
   textCapitalization: textCapitalization,
+  obscureText: obscureText,
+  autocorrect: autocorrect,
+  enableSuggestions: enableSuggestions,
   selectionControls: materialTextSelectionHandleControls,
   contextMenuBuilder: (context, state) {
     const labels = {

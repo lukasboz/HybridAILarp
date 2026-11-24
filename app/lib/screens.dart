@@ -10,6 +10,8 @@ import 'dialogs.dart';
 import 'domain.dart';
 import 'orbit.dart';
 import 'store.dart';
+import 'feature_screens.dart';
+import 'social_screens.dart';
 
 class DiscoverScreen extends StatefulWidget {
   const DiscoverScreen({super.key, required this.store});
@@ -107,6 +109,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                           onPressed: () => showJoinPlan(context, widget.store),
                           icon: const Icon(Icons.link_rounded, size: 15),
                           label: const Text('Join a plan'),
+                        ),
+                        TextButton.icon(
+                          onPressed: () => showDiscovery(context, widget.store),
+                          icon: const Icon(Icons.search_rounded, size: 15),
+                          label: const Text('Find nearby places'),
                         ),
                       ],
                     ),
@@ -467,17 +474,54 @@ class _RoomScreenState extends State<RoomScreen> {
                     icon: const Icon(Icons.tune_rounded, size: 16),
                     label: const Text('My preferences'),
                   ),
+                  OutlinedButton.icon(
+                    onPressed: () => showManagePlan(context, store),
+                    icon: const Icon(Icons.settings_outlined, size: 16),
+                    label: const Text('Manage plan'),
+                  ),
                   if (store.isHost)
                     OutlinedButton.icon(
                       onPressed: () => showAddOption(context, store),
                       icon: const Icon(Icons.add_rounded, size: 16),
                       label: const Text('Add an idea'),
                     ),
+                  if (store.isHost)
+                    OutlinedButton.icon(
+                      onPressed: () => showDiscovery(context, store),
+                      icon: const Icon(Icons.search_rounded, size: 16),
+                      label: const Text('Find places'),
+                    ),
+                  if (store.isHost && room.status != 'confirmed')
+                    OutlinedButton.icon(
+                      onPressed: () => showItinerary(context, store),
+                      icon: const Icon(Icons.route_outlined, size: 16),
+                      label: const Text('Plan multiple stops'),
+                    ),
                   if (!room.local)
                     FilledButton.icon(
                       onPressed: full ? null : shareInvite,
                       icon: const Icon(Icons.link_rounded, size: 16),
                       label: Text(full ? 'This plan is full' : 'Invite people'),
+                    ),
+                  if (!room.local)
+                    OutlinedButton.icon(
+                      onPressed: full
+                          ? null
+                          : () => showInvitePeople(context, store),
+                      icon: const Icon(Icons.people_outline, size: 16),
+                      label: const Text('Invite from People'),
+                    ),
+                  if (store.isHost)
+                    OutlinedButton.icon(
+                      onPressed: store.busy
+                          ? null
+                          : () => showRoutingConsent(context, store),
+                      icon: const Icon(Icons.alt_route_rounded, size: 16),
+                      label: Text(
+                        room.travelSource == 'routed'
+                            ? 'Refresh sourced travel'
+                            : 'Use sourced travel',
+                      ),
                     ),
                   if (room.local)
                     TextButton.icon(
@@ -489,6 +533,48 @@ class _RoomScreenState extends State<RoomScreen> {
                     ),
                 ],
               ),
+              if (room.travelSource == 'routed' || store.routingBusy) ...[
+                const SizedBox(height: 16),
+                GlassSurface(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        store.routingBusy ? 'Checking group routes…' : 'Ranking uses sourced Transitous travel. Missing or expired routes cannot qualify; refresh after shared details change.',
+                        style: const TextStyle(fontSize: 12, height: 1.5),
+                      ),
+                      if (store.routingBusy) ...[
+                        LinearProgressIndicator(value: store.routingProgress),
+                        TextButton(
+                          onPressed: store.cancelRouting,
+                          child: const Text('Cancel route update'),
+                        ),
+                      ] else if (store.isHost)
+                        TextButton(
+                          onPressed: () async {
+                            if (await confirmAction(
+                                  context,
+                                  'Return to estimated travel?',
+                                  'This reopens the decision and uses neighbourhood estimates again.',
+                                  'Use estimates',
+                                ) &&
+                                context.mounted) {
+                              await perform(
+                                context,
+                                store,
+                                store.useEstimatedTravel,
+                              );
+                            }
+                          },
+                          child: const Text(
+                            'Use neighbourhood estimates instead',
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
               if (room.local) ...[
                 const SizedBox(height: 20),
                 GlassSurface(
@@ -799,7 +885,7 @@ class PlanCard extends StatelessWidget {
               _metric(Icons.schedule_rounded, timeLabel(rank.start!)),
               _metric(
                 Icons.directions_transit_outlined,
-                '~${rank.maxTravel} min max',
+                '${store.planner.routed ? "" : "~"}${rank.maxTravel} min max',
               ),
             ],
           ),
@@ -872,7 +958,15 @@ class VotingPanel extends StatelessWidget {
           title: room.title,
           files: [
             XFile.fromData(
-              Uint8List.fromList(utf8.encode(calendarFile(room, idea))),
+              Uint8List.fromList(
+                utf8.encode(
+                  calendarFile(
+                    room,
+                    idea,
+                    proposalActivities(room, store.planner.catalogFor(room)),
+                  ),
+                ),
+              ),
               mimeType: 'text/calendar',
             ),
           ],
@@ -885,11 +979,13 @@ class VotingPanel extends StatelessWidget {
 
   Future<void> sharePlan(BuildContext context, Activity idea) async {
     final room = store.room!;
+    final activities = proposalActivities(room, store.planner.catalogFor(room));
+    final cost = activities.fold<int>(0, (sum, a) => sum + a.cost);
     final text = [
-      '${room.title}: ${idea.name}',
+      '${room.title}: ${activities.map((a) => a.name).join(' → ')}',
       '${readableDate(room.date)} · ${timeLabel(room.proposal!.startMinute)} Toronto time',
-      '${idea.venue}, ${idea.area}',
-      idea.cost == 0 ? 'Free' : 'About \$${idea.cost} per person',
+      activities.map((a) => '${a.venue}, ${a.area}').join(' → '),
+      cost == 0 ? 'Free' : 'About \$$cost per person total',
       'Check current hours and booking before you go.',
     ].join('\n');
     // Clipboard always provides a fallback when a desktop/browser has no share target.
@@ -915,6 +1011,8 @@ class VotingPanel extends StatelessWidget {
             .where((a) => a.id == proposal.candidateId)
             .firstOrNull;
     if (idea == null) return const SizedBox.shrink();
+    final activities = proposalActivities(room, store.planner.catalogFor(room));
+    final totalCost = activities.fold<int>(0, (sum, a) => sum + a.cost);
     return GlassSurface(
       color: MH.accentSoft.withValues(alpha: .55),
       padding: const EdgeInsets.all(22),
@@ -926,7 +1024,7 @@ class VotingPanel extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            idea.name,
+            activities.map((a) => a.name).join(' → '),
             style: const TextStyle(
               fontSize: 23,
               fontWeight: FontWeight.w500,
@@ -936,7 +1034,7 @@ class VotingPanel extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             '${readableDate(room.date)} · ${timeLabel(proposal.startMinute)} Toronto time\n'
-            '${idea.venue} · ${idea.cost == 0 ? 'Free' : '~\$${idea.cost} per person'}',
+            '${activities.length > 1 ? '${activities.length} stops' : idea.venue} · ${totalCost == 0 ? 'Free' : '~\$$totalCost per person total'}',
             style: const TextStyle(
               fontSize: 12,
               color: MH.secondary,
@@ -944,6 +1042,36 @@ class VotingPanel extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 18),
+          if (proposal.stops.isNotEmpty) ...[
+            for (final stop in proposal.stops)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: TextButton(
+                  style: MH.flushText,
+                  onPressed: () {
+                    final item = activities
+                        .where((a) => a.id == stop['candidateId'])
+                        .firstOrNull;
+                    if (item != null) {
+                      showIdea(
+                        context,
+                        store,
+                        item,
+                        rank: store.planner.evaluate(item, room.members),
+                      );
+                    }
+                  },
+                  child: Text(
+                    '${timeLabel(stop["startMinute"] as int)} · ${activities.where((a) => a.id == stop["candidateId"]).firstOrNull?.name ?? "Activity unavailable"} · ${stop["duration"]} min',
+                  ),
+                ),
+              ),
+            const Text(
+              'Travel between stops is estimated. Check routes and venue details before accepting.',
+              style: TextStyle(fontSize: 11, color: MH.secondary),
+            ),
+            const SizedBox(height: 12),
+          ],
           if (room.status == 'confirmed') ...[
             const Text(
               'Everyone agreed, but nothing is booked yet. Check current hours and prices, and reserve ahead if the venue needs it.',
@@ -1110,7 +1238,7 @@ class PrivacyScreen extends StatelessWidget {
           (
             Icons.edit_note_rounded,
             'Your words, your choice.',
-            'Write a note or use manual controls. Your note is sent to cloud AI only after you explicitly agree. MeetHalfway keeps raw notes out of saved plans and preference history.',
+            'Draft with a downloaded model on this device, use manual controls, or choose cloud AI with explicit approval. MeetHalfway keeps raw notes out of saved plans and preference history.',
           ),
           (
             Icons.verified_user_outlined,
@@ -1183,7 +1311,7 @@ class PrivacyScreen extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: Text(
-              '${receipt.action} · Cloud · ${receipt.model} · ${receipt.milliseconds} ms',
+              '${receipt.action} · ${receipt.local ? "On device" : "Cloud"} · ${receipt.model} · ${receipt.milliseconds} ms',
               style: const TextStyle(fontSize: 11, color: MH.secondary),
             ),
           ),
@@ -1195,7 +1323,7 @@ class PrivacyScreen extends StatelessWidget {
               builder: (context) => AlertDialog(
                 title: const Text('Clear plans on this device?'),
                 content: const Text(
-                  'This removes local plans and saved preferences, and restores the sample group. Shared live plans are not deleted.',
+                  'This removes local plans, saved preferences and cached search/route results, and restores the sample group. Shared plans and account preferences stay online. Downloaded models can be removed from Account.',
                 ),
                 actions: [
                   TextButton(
@@ -1216,6 +1344,8 @@ class PrivacyScreen extends StatelessWidget {
           icon: const Icon(Icons.delete_outline_rounded, size: 16),
           label: const Text('Clear local planning data'),
         ),
+        const SizedBox(height: 20),
+        sourceCredits(),
       ],
     ),
   );

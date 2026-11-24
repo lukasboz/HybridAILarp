@@ -1,3 +1,19 @@
+# v0.3 implementation pass — November 23, 2026
+
+Tests were explicitly deferred for this pass. The historical results below apply
+to the earlier application and must not be cited as verification of the new
+local inference, accounts, lifecycle, notifications, discovery or itinerary flows.
+
+- Flutter static analysis completed without issues.
+- Flutter web release compilation succeeded, including the Wasm dry run.
+- ARM64 Android debug compilation succeeded, including the native LiteRT-LM asset.
+- Firestore Security Rules syntax validation succeeded through the Firebase tool.
+- JavaScript/Python implementation files passed syntax checks.
+- iOS source/platform setup is prepared for the existing Mac CI build; no new
+  iOS compilation or physical-device claim is made.
+- Functional tests, emulator/live-project sessions, model downloads/inference,
+  golden updates and all-device runtime validation remain deferred.
+
 # Verification status — Flutter migration
 
 The canonical application is now `app/`. Results below concern that application unless explicitly marked as legacy.

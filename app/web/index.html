@@ -12,15 +12,28 @@
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="manifest" href="manifest.json">
   <title>MeetHalfway · Good plans, together.</title>
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <link rel="author" href="https://github.com/lukasboz/HybridAILarp">
+  <script src="edge-ai/cache_api.js"></script>
+  <script src="edge-ai/opfs_helper.js"></script>
+  <script type="module">
+    // The pinned browser engine is separate from the downloaded model.
+    // Start it lazily: ordinary planning needs neither WebGPU nor a CDN.
+    window.meetLoadLocalAI = () => window.litertLmReady ??= (async () => {
+      const m = await import('https://cdn.jsdelivr.net/npm/@litert-lm/core@0.18.0/+esm');
+      window.Engine = m.Engine;
+      return m.Engine;
+    })().catch(error => { window.litertLmReady = undefined; throw error; });
+  </script>
   <style>html,body{margin:0;background:#f3f8fc}#loading{position:fixed;inset:0;display:grid;place-content:center;text-align:center;font:13px system-ui,sans-serif;color:#38586f}#loading strong{font-size:23px;font-weight:500;letter-spacing:-1px;color:#001b2e}#loading p{margin-top:14px}</style>
 </head>
 <body>
   <div id="loading" role="status"><strong>meethalfway</strong><p>Making room for everyone.</p></div>
   <script>
     window.addEventListener('flutter-first-frame',()=>document.getElementById('loading')?.remove());
-    // Retire the previous HTML app's cache when this build replaces it.
-    if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>Promise.all(rs.filter(r=>r.active?.scriptURL.endsWith('/sw.js')||r.active?.scriptURL.endsWith('/flutter_service_worker.js')).map(r=>r.unregister()))).catch(()=>{});}
-    if('caches' in window){caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('meethalfway-')).map(k=>caches.delete(k)))).catch(()=>{});}
+    if('serviceWorker' in navigator){window.addEventListener('load',()=>{
+      navigator.serviceWorker.register('sw.js').catch(()=>{});
+    });}
   </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>

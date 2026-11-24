@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:math' as math;
 
+import 'package:crypto/crypto.dart';
+
 typedef Json = Map<String, dynamic>;
 
 const cardKeys = {
@@ -203,9 +205,9 @@ class Experience {
     return Activity({
       ...option,
       'area': area['name'],
-      'lat': area['lat'],
-      'lng': area['lng'],
-      'duration': 90,
+      'lat': option['lat'] ?? area['lat'],
+      'lng': option['lng'] ?? area['lng'],
+      'duration': option['duration'] ?? 90,
       'windows': [
         [option['opens'], option['closes']],
       ],
@@ -253,6 +255,31 @@ class Experience {
       );
     }
     final tags = option['tags'];
+    final facts = option['sourceFacts'];
+    if (facts != null &&
+        (facts is! Map ||
+            facts.length != 3 ||
+            !['hours', 'fee', 'access'].every(
+              (key) =>
+                  facts[key] is String && (facts[key] as String).length <= 300,
+            ))) {
+      throw const FormatException('Check the venue source details.');
+    }
+    final duration = option['duration'] ?? 90;
+    if (duration is! int || duration < 30 || duration > 240) {
+      throw const FormatException(
+        'Choose an activity length from 30 to 240 minutes.',
+      );
+    }
+    if ((option['lat'] != null || option['lng'] != null) &&
+        (option['lat'] is! num ||
+            option['lng'] is! num ||
+            (option['lat'] as num) < 43.4 ||
+            (option['lat'] as num) > 44.0 ||
+            (option['lng'] as num) < -80 ||
+            (option['lng'] as num) > -78.8)) {
+      throw const FormatException('Choose a place in the Toronto area.');
+    }
     if (tags is! List ||
         tags.isEmpty ||
         tags.length > 6 ||
@@ -264,27 +291,35 @@ class Experience {
         option['closes'] is! int ||
         (option['opens'] as int) < 360 ||
         (option['closes'] as int) > 1440 ||
-        (option['closes'] as int) - (option['opens'] as int) < 90) {
+        (option['closes'] as int) - (option['opens'] as int) < duration) {
       throw const FormatException(
-        'Allow at least 90 minutes for this activity.',
+        'Allow enough time for the chosen activity length.',
       );
     }
   }
 }
 
 class Proposal {
-  Proposal(this.candidateId, this.startMinute, this.revision);
+  Proposal(
+    this.candidateId,
+    this.startMinute,
+    this.revision, {
+    this.stops = const [],
+  });
   factory Proposal.fromJson(Json json) => Proposal(
     json['candidateId'] as String,
     json['startMinute'] as int,
     json['revision'] as int,
+    stops: List<Json>.from(json['stops'] as List? ?? []),
   );
   final String candidateId;
   final int startMinute, revision;
+  final List<Json> stops;
   Json toJson() => {
     'candidateId': candidateId,
     'startMinute': startMinute,
     'revision': revision,
+    if (stops.isNotEmpty) 'stops': stops,
   };
 }
 
@@ -316,10 +351,13 @@ class PlanRoom {
     this.revision = 0,
     this.proposal,
     this.inviteId,
+    this.travelSource = 'estimate',
+    Map<String, Json>? routes,
     Map<String, PlanVote>? votes,
     List<Json>? options,
   }) : votes = votes ?? {},
-       options = options ?? [];
+       options = options ?? [],
+       routes = routes ?? {};
   factory PlanRoom.fromJson(Json json) => PlanRoom(
     id: json['id'] as String,
     title: json['title'] as String,
@@ -342,12 +380,19 @@ class PlanRoom {
       ),
     ),
     options: List<Json>.from(json['options'] as List? ?? []),
+    travelSource: json['travelSource'] as String? ?? 'estimate',
+    routes: (json['routes'] as Map? ?? {}).map(
+      (k, v) => MapEntry(k as String, Map<String, dynamic>.from(v as Map)),
+    ),
   );
-  final String id, title, date, ownerId;
+  final String id;
+  String title, date, ownerId;
   final bool local;
   final String? inviteId;
   List<Person> members;
   List<Json> options;
+  String travelSource;
+  Map<String, Json> routes;
   Map<String, PlanVote> votes;
   String status;
   int revision;
@@ -384,6 +429,8 @@ class PlanRoom {
     'inviteId': inviteId,
     'votes': votes.map((k, v) => MapEntry(k, v.toJson())),
     'options': options,
+    'travelSource': travelSource,
+    'routes': routes,
   };
 }
 
@@ -412,8 +459,29 @@ class RankedPlan {
 }
 
 class Planner {
-  Planner(this.data);
+  Planner(this.data, {this.room});
   final Experience data;
+  final PlanRoom? room;
+  late final String? _basis = room == null ? null : planningBasis(room!, data);
+  bool get routed => room?.travelSource == 'routed';
+  Json? routeFact(String key) {
+    final current = room;
+    final fact = current?.routes[key];
+    if (current == null ||
+        fact == null ||
+        fact['basis'] != _basis ||
+        (fact['expiresAt'] as int? ?? 0) <=
+            DateTime.now().millisecondsSinceEpoch) {
+      return null;
+    }
+    return fact;
+  }
+
+  int routedMinutes(String key, String? memberId) {
+    final value = (routeFact(key)?['minutes'] as Map?)?[memberId];
+    return value is int && value >= 0 && value <= 300 ? value : 9999;
+  }
+
   double distance(double lat1, double lng1, double lat2, double lng2) {
     double rad(double d) => d * math.pi / 180;
     final x =
@@ -424,7 +492,8 @@ class Planner {
     return 6371 * 2 * math.atan2(math.sqrt(x), math.sqrt(1 - x));
   }
 
-  int travel(PreferenceCard card, Activity activity) {
+  int travel(PreferenceCard card, Activity activity, {String? memberId}) {
+    if (routed) return routedMinutes('start__${activity.id}', memberId);
     final area = data.areas.firstWhere((a) => a['id'] == card.areaId);
     final speed = {'transit': 18.0, 'walk': 4.5, 'bike': 12.0}[card.mode]!;
     return (distance(
@@ -438,6 +507,104 @@ class Planner {
                 60 +
             (card.mode == 'transit' ? 10 : 3))
         .ceil();
+  }
+
+  int between(Activity from, Activity to, String mode, {String? memberId}) {
+    if (routed) return routedMinutes('${from.id}__${to.id}', memberId);
+    final speed = {'transit': 18.0, 'walk': 4.5, 'bike': 12.0}[mode]!;
+    return (distance(from.lat, from.lng, to.lat, to.lng) * 1.35 / speed * 60 +
+            (mode == 'transit' ? 10 : 3))
+        .ceil();
+  }
+
+  /// An ordered itinerary uses the same hard limits for the whole outing.
+  Itinerary itinerary(List<Activity> activities, List<Person> people) {
+    final reasons = <String>[];
+    if (activities.length < 2 ||
+        activities.length > 3 ||
+        activities.map((a) => a.id).toSet().length != activities.length) {
+      return Itinerary(
+        [],
+        ['Choose two or three different activities.'],
+        0,
+        {},
+      );
+    }
+    if (people.length < 2 || people.any((p) => p.card == null)) {
+      return Itinerary(
+        [],
+        ['Everyone must share their preferences first.'],
+        0,
+        {},
+      );
+    }
+    final cards = people.map((p) => p.card!).toList();
+    final cost = activities.fold<int>(0, (sum, a) => sum + a.cost);
+    if (cards.any((c) => cost > c.maxSpend)) {
+      reasons.add('The total cost exceeds someone’s spending limit.');
+    }
+    var cursor = cards.map((c) => c.earliest).reduce(math.max);
+    final end = cards.map((c) => c.latest).reduce(math.min);
+    final totalTravel = <String, int>{};
+    final stops = <Json>[];
+    for (var i = 0; i < activities.length; i++) {
+      final activity = activities[i];
+      var transfer = 0;
+      for (final person in people) {
+        final c = person.card!;
+        final minutes = i == 0
+            ? travel(c, activity, memberId: person.id)
+            : between(activities[i - 1], activity, c.mode, memberId: person.id);
+        if (minutes == 9999) {
+          reasons.add('Refresh sourced routes for every person and stop.');
+        }
+        totalTravel[person.id] = (totalTravel[person.id] ?? 0) + minutes;
+        if (i > 0) transfer = math.max(transfer, minutes);
+        if ((c.quiet && activity.noise > 1) ||
+            (c.indoors && !activity.indoor) ||
+            (c.stepFree && activity.stepFree != true)) {
+          reasons.add(
+            '${activity.name} does not meet everyone’s setting or access requirements.',
+          );
+        }
+      }
+      cursor += transfer;
+      int? start;
+      for (final window in activity.windows) {
+        final possible = math.max(cursor, window[0]);
+        if (possible + activity.duration <= math.min(end, window[1])) {
+          start = possible;
+          break;
+        }
+      }
+      if (start == null) {
+        reasons.add(
+          'There is not enough shared time for ${activity.name} and travel between stops.',
+        );
+        break;
+      }
+      if (routed) {
+        final key = i == 0
+            ? 'start__${activity.id}'
+            : '${activities[i - 1].id}__${activity.id}';
+        if (routeFact(key)?['arrivalMinute'] != start) {
+          reasons.add('Refresh route times for this itinerary’s schedule.');
+        }
+      }
+      stops.add({
+        'candidateId': activity.id,
+        'startMinute': start,
+        'duration': activity.duration,
+        'transferMinutes': transfer,
+      });
+      cursor = start + activity.duration;
+    }
+    for (final person in people) {
+      if ((totalTravel[person.id] ?? 0) > person.card!.maxTravel) {
+        reasons.add('Total travel exceeds ${person.name}’s travel limit.');
+      }
+    }
+    return Itinerary(stops, reasons.toSet().toList(), cost, totalTravel);
   }
 
   RankedPlan evaluate(Activity activity, List<Person> members) {
@@ -462,9 +629,15 @@ class Planner {
         break;
       }
     }
-    final travels = cards.map((c) => travel(c, activity)).toList();
+    final travels = cards.indexed
+        .map((p) => travel(p.$2, activity, memberId: members[p.$1].id))
+        .toList();
     final reasons = <String>[
-      if (start == null) 'No shared 90-minute time window.',
+      if (routed &&
+          (travels.contains(9999) ||
+              routeFact('start__${activity.id}')?['arrivalMinute'] != start))
+        'Current sourced routes are required for everyone at this start time.',
+      if (start == null) 'No shared ${activity.duration}-minute time window.',
       if (cards.any((c) => activity.cost > c.maxSpend))
         'Above someone’s shared spending limit.',
       if (cards.indexed.any((p) => travels[p.$1] > p.$2.maxTravel))
@@ -526,6 +699,56 @@ class Planner {
       : room.options.map(data.optionCandidate).toList();
 }
 
+class Itinerary {
+  Itinerary(this.stops, this.reasons, this.cost, this.travel);
+  final List<Json> stops;
+  final List<String> reasons;
+  final int cost;
+  final Map<String, int> travel;
+  bool get eligible => reasons.isEmpty && stops.length >= 2;
+}
+
+String planningBasis(PlanRoom room, Experience data) {
+  final members = [...room.members]..sort((a, b) => a.id.compareTo(b.id));
+  final activities = [...Planner(data).catalogFor(room)]
+    ..sort((a, b) => a.id.compareTo(b.id));
+  return sha256
+      .convert(
+        utf8.encode(
+          jsonEncode({
+            'date': room.date,
+            'members': members
+                .map((p) => {'id': p.id, 'card': p.card?.toJson()})
+                .toList(),
+            'activities': activities
+                .map(
+                  (a) => {
+                    'id': a.id,
+                    'lat': a.lat,
+                    'lng': a.lng,
+                    'windows': a.windows,
+                    'duration': a.duration,
+                  },
+                )
+                .toList(),
+          }),
+        ),
+      )
+      .toString();
+}
+
+List<Activity> proposalActivities(PlanRoom room, List<Activity> catalog) {
+  final proposal = room.proposal;
+  if (proposal == null) return [];
+  final ids = proposal.stops.isEmpty
+      ? [proposal.candidateId]
+      : proposal.stops.map((s) => s['candidateId'] as String).toList();
+  return ids
+      .map((id) => catalog.where((a) => a.id == id).firstOrNull)
+      .whereType<Activity>()
+      .toList();
+}
+
 String timeLabel(int minute) {
   final h = (minute ~/ 60) % 24, m = minute % 60;
   return '${h % 12 == 0 ? 12 : h % 12}${m == 0 ? '' : ':${m.toString().padLeft(2, '0')}'}${h < 12 ? 'am' : 'pm'}';
@@ -533,6 +756,26 @@ String timeLabel(int minute) {
 
 String isoDate(DateTime date) =>
     '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+DateTime torontoInstant(String day, int minutes) {
+  final date = DateTime.parse(day);
+  int sunday(int month, int ordinal) {
+    final first = DateTime.utc(date.year, month, 1);
+    return 1 + (DateTime.sunday - first.weekday + 7) % 7 + (ordinal - 1) * 7;
+  }
+
+  final local = DateTime.utc(
+    date.year,
+    date.month,
+    date.day,
+  ).add(Duration(minutes: minutes));
+  final daylightStart = DateTime.utc(date.year, 3, sunday(3, 2), 2);
+  final daylightEnd = DateTime.utc(date.year, 11, sunday(11, 1), 2);
+  final daylight =
+      !local.isBefore(daylightStart) && local.isBefore(daylightEnd);
+  return local.add(Duration(hours: daylight ? 4 : 5));
+}
+
 String nextSaturday([DateTime? now]) {
   final date = now ?? DateTime.now();
   final days = (DateTime.saturday - date.weekday + 7) % 7;
@@ -541,7 +784,17 @@ String nextSaturday([DateTime? now]) {
   );
 }
 
-String calendarFile(PlanRoom room, Activity activity) {
+String calendarFile(
+  PlanRoom room,
+  Activity activity, [
+  List<Activity>? itinerary,
+]) {
+  final activities = itinerary ?? [activity];
+  final totalCost = activities.fold<int>(0, (sum, a) => sum + a.cost);
+  final lastStop = room.proposal!.stops.lastOrNull;
+  final endMinute = lastStop == null
+      ? room.proposal!.startMinute + activity.duration
+      : (lastStop['startMinute'] as int) + (lastStop['duration'] as int);
   String escape(String s) => s
       .replaceAll('\\', '\\\\')
       .replaceAll('\n', '\\n')
@@ -569,9 +822,15 @@ String calendarFile(PlanRoom room, Activity activity) {
     return out.toString();
   }
 
-  final cost = activity.cost == 0
-      ? 'free'
-      : 'about \$${activity.cost} per person';
+  final cost = totalCost == 0 ? 'free' : 'about \$$totalCost per person';
+  final schedule = room.proposal!.stops
+      .map((stop) {
+        final item = activities
+            .where((a) => a.id == stop['candidateId'])
+            .firstOrNull;
+        return '${timeLabel(stop["startMinute"] as int)}: ${item?.name ?? "Activity"} at ${item?.venue ?? "venue"} (${stop["duration"]} min)';
+      })
+      .join('; ');
   return [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
@@ -597,10 +856,10 @@ String calendarFile(PlanRoom room, Activity activity) {
     'UID:${room.id}-${room.proposal!.revision}@meethalfway.app',
     'DTSTAMP:${DateTime.now().toUtc().toIso8601String().replaceAll(RegExp(r'[-:]'), '').split('.').first}Z',
     'DTSTART;TZID=America/Toronto:${stamp(room.proposal!.startMinute)}',
-    'DTEND;TZID=America/Toronto:${stamp(room.proposal!.startMinute + activity.duration)}',
-    'SUMMARY:${escape(activity.name)}',
-    'LOCATION:${escape('${activity.venue}, Toronto')}',
-    'DESCRIPTION:${escape('${room.title}. Estimated cost: $cost. Nothing is booked: confirm current hours, prices and any reservation before travelling.')}',
+    'DTEND;TZID=America/Toronto:${stamp(endMinute)}',
+    'SUMMARY:${escape(activities.map((a) => a.name).join(' → '))}',
+    'LOCATION:${escape('${activities.map((a) => a.venue).join(' → ')}, Toronto')}',
+    'DESCRIPTION:${escape('${room.title}. ${schedule.isEmpty ? "" : "$schedule. "}Estimated cost: $cost. Nothing is booked: confirm current hours, prices and any reservation before travelling.')}',
     'END:VEVENT',
     'END:VCALENDAR',
   ].map(fold).join('\r\n');

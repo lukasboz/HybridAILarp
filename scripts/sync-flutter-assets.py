@@ -4,6 +4,7 @@ import json
 import pathlib
 import plistlib
 import shutil
+import urllib.parse
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 assets = ROOT / 'app/assets'
@@ -24,11 +25,12 @@ dart += '}\n'
 config = {'web': {}, 'android': {}, 'ios': {}, 'appCheckSiteKey': '',
           'cloudModel': 'gemini-3.8-flash',
           'cloudFallbackModel': 'gemini-3.5-flash-lite',
+          'pushEnabled': False, 'webPushVapidKey': '',
           'publicWebUrl': 'https://meethalfway-2026-e43ca6.web.app/', 'emulator': False}
 web = ROOT / 'web/firebase-config.local.json'
 if web.exists():
     existing = json.loads(web.read_text())
-    config.update({key: existing[key] for key in ['appCheckSiteKey', 'cloudModel', 'cloudFallbackModel', 'publicWebUrl', 'emulator'] if key in existing})
+    config.update({key: existing[key] for key in ['appCheckSiteKey', 'cloudModel', 'cloudFallbackModel', 'publicWebUrl', 'emulator', 'pushEnabled', 'webPushVapidKey'] if key in existing})
     config['web'] = existing.get('firebase', {})
 android = ROOT / 'native/android/app/google-services.json'
 if android.exists():
@@ -47,4 +49,21 @@ if ios.exists():
         'messagingSenderId': 'GCM_SENDER_ID', 'iosBundleId': 'BUNDLE_ID',
         'storageBucket': 'STORAGE_BUCKET'}.items() if source in data}
 (assets / 'firebase.json').write_text(json.dumps(config, indent=2) + '\n')
+(ROOT / 'app/web/firebase-messaging-config.js').write_text(
+    'self.meetFirebaseConfig = ' + json.dumps(config['web']) + ';\n')
+
+# Copy the pinned dependency's browser storage helpers; don't hand-maintain a
+# second copy or load arbitrary scripts from the model host.
+package_config = ROOT / 'app/.dart_tool/package_config.json'
+if package_config.exists():
+    packages = json.loads(package_config.read_text())['packages']
+    for package in packages:
+        if package['name'] != 'flutter_edge_ai':
+            continue
+        uri = urllib.parse.urljoin(package_config.as_uri(), package['rootUri'])
+        source = pathlib.Path(urllib.parse.unquote(urllib.parse.urlparse(uri).path)) / 'web'
+        target = ROOT / 'app/web/edge-ai'
+        target.mkdir(parents=True, exist_ok=True)
+        for filename in ['cache_api.js', 'opfs_helper.js']:
+            shutil.copyfile(source / filename, target / filename)
 print('Bundled Flutter catalogue, design tokens, Inter fonts, photographs and public client configuration.')

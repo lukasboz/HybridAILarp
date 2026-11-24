@@ -1,79 +1,59 @@
 # Project status
 
-_As of November 21, 2026 · app version 0.2.1 (build 3) · branch `fix/integration-gaps`_
+_As of November 23, 2026 · implementation version 0.3.0 (build 4)_
 
-## What MeetHalfway is
+The canonical Flutter app is `app/`. `web/` and `native/` are historical clients.
+This implementation pass follows the agreed scope: local AI where capable,
+free providers first, principal product flows, then multi-stop planning.
 
-MeetHalfway helps a group of friends pick one activity that respects everyone's budget, travel limit, free time, interests and access needs. Each person fills in a short preference card. The app removes any activity that breaks someone's limit, then ranks the rest so the least-satisfied person comes first. The host puts one idea to the group, everyone votes, and the plan is confirmed only when every member says yes.
+## Implemented in this pass
 
-It is one Flutter app (`app/`) that runs on web, Android and iOS with the same screens on every platform. The activity catalogue is **sample data for Toronto**, not live venue search.
+| Area | Implementation |
+| --- | --- |
+| On-device AI | Flutter Edge AI / LiteRT-LM; pinned Qwen3 0.6B (~345 MB) on ARM64 phones and Gemma 4 E2B web (~2 GB). Capability probe, explicit download, progress/cancel/delete, validated card review, model receipts and a 120-second generation deadline. No automatic cloud fallback. |
+| Discovery | Toronto OSM/Overpass searches by neighbourhood and interest, bounded requests, 24-hour caching, source attribution and host-reviewed import. Unknown prices/access are not invented. |
+| Routes | User-approved, on-demand Transitous transit/walk/bike checks for neighbourhood-to-venue trips, with attribution and cached results. Provider routes are separate from deterministic estimates. |
+| Accounts | Email/password sign-in, recovery, verification, anonymous-account linking, private approved-card/name sync and feedback defaults, sign-out, export and private account deletion. A guest with active plans must link an account or leave those plans before switching identities. |
+| Plan management | Edit title/date and host options, variable activity length, rename self, leave/remove people, transfer host, revoke invitation capabilities and purge live plans. |
+| Notifications | Live per-room Updates feed on the free plan; optional FCM installation registration, web worker, foreground/open handling, private inbox and bounded Cloud Functions delivery. Push remains disabled until explicitly configured. |
+| Connectivity | Offline/cache notices, live header subscriptions and restored plans; versioned offline web shell after packaging. Model files use the inference library's separate cache. |
+| Distribution | Android release key configuration without debug-key release fallback; ARM64 Android 11+ builds; native invitation handling; iOS distribution entitlements; real-identity app-link file generator. |
+| Multi-stop | Ordered two/three-stop proposals, activity durations, cumulative costs and travel, shared-window/setting/access checks, same-revision unanimous approval, full-itinerary sharing/calendar export. |
 
-## What works today
+## Activation still needed
 
-### Planning
-- Discover screen with an activity orbit, a sample group (Alex, Maya, Jordan) and a plan composer.
-- Plans that stay on the device, with sample people you can switch between to see each perspective.
-- Preference cards: neighbourhood, spending and travel limits, travel mode, time window, interests, and quiet, indoor or step-free needs. People review the card before sharing it.
-- Hard-limit filtering and fair ranking, plus an "Outside our limits" view that explains why each idea was excluded.
-- The host can add up to 12 of their own activities, which replace the sample catalogue for that plan.
-- Proposal, voting ("I'm in", "Discuss", "Change it") and unanimous confirmation tied to the current revision. Any change to a card, the members or the activities reopens the decision and says why.
-- Plan details with an illustrative travel map, each person's travel time against their limit, and indoor, noise and step-free labels.
-- Confirmed plans show cost, time and a "nothing is booked yet" reminder, with calendar (`.ics`) export and plan sharing.
+No service deployment, billing change, account-provider activation, store upload,
+or signing-key publication was performed.
 
-### Live plans (Firebase)
-- Anonymous sign-in, so nobody has to register before joining.
-- Live rooms in Firestore for up to 8 people, joined with invitation links that last 7 days. When a link has less than a day left, the host's next share renews it.
-- Clear messages for expired invitations and full plans. Live plans reload when the app opens.
-- Firestore security rules covering membership, card validation, vote integrity, the 8-person cap and confirmation. They are tested on the emulator (13 tests).
-- App Check, and Remote Config for model names, the explanation switch and group size.
+1. Enable the configured email/password provider and deploy the updated rules
+   before using the new account/lifecycle/schema paths against production.
+2. Build/package and deploy Hosting to replace the older public client; publish
+   the existing Remote Config template if it is still pending.
+3. For background push only: opt into Blaze, deploy `functions/`, configure web
+   VAPID/APNs credentials and set `pushEnabled` in the ignored client config.
+   The Updates feed works without this service. See `functions/README.md`.
+4. Supply actual Android release keys and an Apple distribution team/profile.
+   Run `scripts/prepare-app-links.mjs` with real signing IDs and deploy the
+   resulting `.well-known` files. Free iPhone development installs can use
+   the custom invitation scheme; universal links/APNs need provisioned capabilities.
+5. Review quotas before a public launch. Overpass and Transitous are community
+   services; Transitous's public endpoint is limited to light, open-source,
+   non-commercial use. Current requests are explicit and cached.
 
-### AI (cloud, consent-based)
-- **Draft with AI** turns a free-text note into a preference card for the person to review. The note is sent only after they agree, and it is never saved.
-- **Explain this shortlist** describes why the top three ideas fit and their tradeoffs, using anonymous labels instead of member IDs. A separate consent screen comes first.
-- Primary model `gemini-3.8-flash`, with one fallback to `gemini-3.5-flash-lite` when the first is busy or slow. Requests time out after 45 seconds, and the Privacy screen lists which model handled each request.
-- AI never changes rankings, limits, votes or confirmation. Manual controls work without it.
+## Verification boundary
 
-### Platforms, builds and tests
-- Phone layouts checked from 320 to 430 px wide, including at 130% text size, with no overlaps or overflow.
-- Web release build and Android debug APK build locally. iOS is compiled on GitHub's Mac runner and installed with `xtool`.
-- CI (`.github/workflows/flutter.yml`): analyze, test, web build, Android APK, unsigned iOS build, and Firestore rules tests.
-- 34 Flutter tests: planner results that match the shared JavaScript fixtures, store logic, AI fallback and error handling, consent, UI flows, and 4 screenshot baselines.
+Functional tests, emulator flows, golden updates and physical-device validation
+are deliberately deferred at the user's request. Static analysis, compilation
+and rules syntax checks are tracked separately in `VERIFICATION.md`.
 
-## Still to integrate or finish
+The earlier 34-test and real-Firebase/device results apply to v0.2 only. The
+new navigation and screens will require updated visual baselines during the
+later testing pass. A Mac runner is needed to compile the current iOS sources.
 
-### 1. Deploy what's already built
-- **Firestore rules:** deploy with `firebase deploy --only firestore:rules`. Until then, invitation renewal and the confirmed-plan lock are enforced only by the app.
-- **Remote Config:** publish `remoteconfig.template.json`, which adds `cloud_fallback_model`.
-- **Hosting:** the public site still serves the earlier HTML client. Run `npm run build` and deploy `dist/` to switch it to Flutter.
-- **App Check on web:** the production key excludes localhost. Confirm that the hosted domain is registered.
+## Remaining product decisions
 
-### 2. Verify on real devices and the live project
-- Final on-iPhone check of the v0.2.1 build: AI drafting, voting and confirmation.
-- A full cross-device run (create → join → share cards → vote → confirm) with real phones.
-- Against the real Firebase project: invitation renewal, error messages for expired invitations and full plans, and live plans reloading on launch.
-- Android system Back on a device, and web address-bar cleanup after joining through a link.
-
-### 3. Platform and distribution
-- **Invite links that open the installed app** (iOS universal links / Android App Links). This needs a paid Apple developer account, Android release signing and hosted verification files.
-- Release signing and app-store distribution. The iOS build is currently development-only, with the App Check debug provider.
-- Offline caching for the web app. Native apps already work offline for local plans.
-
-### 4. Product features not built yet
-- **Live activity data:** real venues, prices, hours, access and routes from a provider with provenance. Only Toronto is covered today.
-- **Accounts:** durable sign-in, linking a guest to an account, and recovery after browser data is cleared.
-- **Managing a plan:** editing or removing host activities, editing your display name, leaving a plan, removing members, transferring ownership and deleting a live plan.
-- **Notifications:** none yet, so people must open the app to see new votes.
-- An offline or connection-status banner.
-- Friends, history and reviews; multi-stop plans; data-retention and deletion controls.
-- A production review of services, quotas and costs.
-
-### 5. Hackathon submission (deadline November 30, 2026, 2 p.m. Pacific)
-- Recheck the [official rules](https://firebasehybridaihackathon.devpost.com/rules). The earlier design included on-device AI; this Flutter app uses **cloud AI only**. Confirm whether that still qualifies.
-- Required items: Firebase AI Logic used at runtime, App Check, a public open-source repository, and a public demo video of 3 minutes or less. [HACKATHON.md](HACKATHON.md) has a demo script, though its AI claims predate the Flutter migration.
-
-### Engineering notes
-- **Screenshot baselines** in `app/test/goldens/` are rendered on Linux, and Windows renders differ by 1–3%. After an intentional UI change, regenerate them on Linux with `flutter test --update-goldens`. Without a Linux machine, download the `golden-failures` artifact from the failed CI run and copy each `*_testImage.png` over its baseline.
-- `scripts/flutter.sh` calls `python3`. On Windows, make sure that command exists.
-- The legacy `web/` and `native/` clients remain only for reference and aren't maintained.
-
-See also: [Architecture](ARCHITECTURE.md) · [Product](PRODUCT.md) · [Flutter setup](FLUTTER.md) · [Verification](VERIFICATION.md)
+Friends/social graphs and reviews remain deferred. A commercial venue/events
+provider, verified current prices/access and authoritative route-backed ranking
+are separate from the implemented free lookup and host-review flow. Background
+push/store distribution require external activation. Automatic reservations,
+payments and private-note persistence are not part of this application.

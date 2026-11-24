@@ -25,6 +25,12 @@ native/ios/Resources/NativeConfig.plist
 *.ipa
 *.apk
 *.keystore
+*.jks
+app/android/key.properties
+app/android/build/
+app/ios/Flutter/Distribution.xcconfig
+app/web/firebase-messaging-config.js
+app/web/edge-ai/
 
 # Generated Flutter public Firebase configuration
 app/assets/firebase.json

@@ -16,7 +16,7 @@ bash scripts/flutter.sh analyze
 bash scripts/flutter.sh test
 bash scripts/flutter.sh build web --release --no-web-resources-cdn
 python3 scripts/package-flutter-web.py
-bash scripts/flutter.sh build apk --debug
+bash scripts/flutter.sh build apk --debug --target-platform android-arm64
 ```
 
 The wrapper copies the existing shared JSON, photos and fonts. Edit their canonical sources, not the generated copies in `app/assets/`. Commit synchronized non-secret assets. `app/assets/firebase.json` is generated and ignored.
@@ -58,7 +58,7 @@ bash scripts/test-flutter-firebase.sh
 
 The default target is `emulator-5554`, with host `10.0.2.2`. Override `FLUTTER_TEST_DEVICE` / `FIREBASE_TEST_HOST` for another target. The wrapper starts and stops backend emulators; do not run it over an already-running emulator suite on the same ports. Android debug network policy permits cleartext only to local emulator addresses. The test passed on API 35 and wrote `app/build/integration_response_data.json`. It verifies anonymous identities, invitations, shared cards, host options, forged/stale vote rejection and unanimous confirmation. It does not establish production credentials, App Check attestation or model responses. Rebuild the normal app after testing before distributing an APK.
 
-The migration left the Firestore schema, authorization rules, eight-member cap, twelve host-option slots and atomic revision resets unchanged. Since then, the rules have gained an invitation-renewal path for the host and refuse a new proposal once a plan is confirmed. Run `npm run test:rules` and deploy them with `firebase deploy --only firestore:rules` before relying on server enforcement. The Remote Config template now lists `cloud_fallback_model`, and the client reads `max_group_size` (clamped to 2–8). Neither the rules nor the template has been deployed or published.
+The migration retained the core room protocol. v0.3 extends it with private profiles/devices/inboxes, bounded activity events, room/member lifecycle operations, optional venue provenance/duration and two/three-stop proposals. The eight-member cap, twelve option slots and revision-bound consensus remain. Run `npm run test:rules` and deploy them with `firebase deploy --only firestore:rules` before relying on server enforcement. The Remote Config template now lists `cloud_fallback_model`, and the client reads `max_group_size` (clamped to 2–8). Neither the rules nor the template has been deployed or published.
 
 An additional native connection test is explicitly gated behind `RUN_FIREBASE_LIVE_TEST=true`. It uses the configured real project and requires `FIREBASE_TEST_DEBUG_TOKEN` from a privately registered App Check token. Supply both through an ignored, permission-restricted Dart define file:
 
@@ -72,7 +72,7 @@ This test passed for Android anonymous Auth, a valid App Check token and server-
 
 ## AI consent and storage
 
-Flutter uses explicit cloud consent for optional note drafting and shortlist explanations. Manual editing never calls a model. Raw notes remain in the editor, are cleared after drafting/review/disposal, and never enter local plan storage or Firestore. After consent they are transmitted to Google through Firebase AI Logic; this is not on-device inference. Provider data handling is governed by the configured service.
+Flutter supports optional downloaded local note drafting and separately consented cloud note drafting/shortlist explanations. Manual editing never calls a model. Raw notes remain in the editor, are cleared after drafting/review/disposal, and never enter local plan storage or Firestore. Only the cloud action transmits them to Google through Firebase AI Logic. Local drafting runs through LiteRT-LM and never silently falls back to cloud. Provider data handling is governed by the configured service.
 
 The primary `cloud_model` defaults to `gemini-3.8-flash`. Temporary capacity/quota failures and timeouts can use the supported `cloud_fallback_model`, defaulting to `gemini-3.5-flash-lite`. Each attempt has a 45-second deadline and closes its HTTP client; there is at most one fallback. Verification, API configuration and region failures do not switch models. Product errors distinguish these cases from connectivity, and receipts identify the model that actually answered. Both requests stay within the same explicitly approved Google/Firebase operation.
 
@@ -80,6 +80,30 @@ Approved cards, local rooms and feedback defaults use Flutter SharedPreferences 
 
 ## Rollout and remaining product scope
 
-`npm run build` packages Flutter into `dist/`, which the existing Firebase Hosting configuration already targets. The packaged worker retires old MeetHalfway caches, and the bootstrap unregisters the legacy worker. Hosting deployment remains an explicit later action. Flutter web assets need an initial network load; offline PWA caching is not implemented in this migration. Native apps bundle their sample catalogue and save local plans offline.
+`npm run build` packages Flutter into `dist/`, which the existing Firebase Hosting configuration already targets. The packaged worker versions the app shell and retires older shell caches, while preserving the inference library’s model cache. Hosting deployment remains an explicit later action. Flutter web assets need an initial network load, then the packaged shell is cached for offline use. The local browser engine/model must also have been loaded while online. Native apps bundle their sample catalogue and save local plans offline.
 
-The legacy `web/` and `native/` sources remain as reference, with `*:legacy` npm commands. They are not parallel supported UI implementations. The migration preserves the planning flow; it does not turn sample data into live discovery or add Yumi’s account/friends/review system.
+The legacy `web/` and `native/` sources remain as reference, with `*:legacy` npm commands. They are not parallel supported UI implementations. The bundled sample catalogue stays labelled. v0.3 adds free OSM discovery, accounts and multi-stop flows; friends/reviews remain deferred. See STATUS.md for the current implementation and activation boundary.
+
+## v0.3 activation and cost boundaries
+
+The configured database is the existing Standard `(default)` instance. Enable
+`emailPassword` with `firebase deploy --only auth` and deploy the updated
+`firestore.rules` before exercising new flows. Review the rules and run the
+later authorization test pass before broad release. Nothing in a build deploys
+these changes.
+
+Local model downloads use pinned catalog revisions. Qwen3 0.6B is ~345 MB on
+ARM64 Android/iOS; Gemma 4 E2B's browser export is ~2 GB. No Hugging Face token is
+embedded or required by these selected public artifacts. WebGPU capability is
+checked before offering the web runtime. A local generation timeout/cancellation
+stops its session and the model is closed afterward.
+
+The app's free Updates feed requires no Cloud Functions. Background push is
+opt-in and disabled by default. Set `pushEnabled` and `webPushVapidKey` in ignored
+`web/firebase-config.local.json` only after configuring the optional backend and
+native credentials. See `functions/README.md`. Builds generate only public web
+messaging configuration and copy browser storage helpers from the pinned package.
+
+Overpass venue searches cache for 24 hours. Transitous checks are explicit and
+cached for 15 minutes by location/mode/planning minute. These services receive no private notes
+and require no API keys. Source links and community-service attribution are shown.
