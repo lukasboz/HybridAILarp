@@ -152,8 +152,10 @@ extension MeetFeatures on MeetStore {
           );
     }
     notifications.onOpenRoom = (id) {
-      final target = liveRooms.where((r) => r.id == id).firstOrNull;
-      if (target != null) unawaited(openRoom(target));
+      pendingRoomId = id;
+      tab = 'updates';
+      openPendingRoom();
+      changed();
     };
     unawaited(notifications.restore());
     await _watchPeople();

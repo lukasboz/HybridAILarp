@@ -1,18 +1,16 @@
-# v0.3 implementation pass — November 23, 2026
+# v0.4 implementation and release — November 24, 2026
 
-Tests were explicitly deferred for this pass. The historical results below apply
-to the earlier application and must not be cited as verification of the new
-local inference, accounts, lifecycle, notifications, discovery or itinerary flows.
+No tests were written or run for this implementation pass, as requested. Existing test files and visual baselines were left unchanged. The historical results below apply to the earlier application.
 
-- Flutter static analysis completed without issues.
-- Flutter web release compilation succeeded, including the Wasm dry run.
-- ARM64 Android debug compilation succeeded, including the native LiteRT-LM asset.
-- Firestore Security Rules syntax validation succeeded through the Firebase tool.
-- JavaScript/Python implementation files passed syntax checks.
-- iOS source/platform setup is prepared for the existing Mac CI build; no new
-  iOS compilation or physical-device claim is made.
-- Functional tests, emulator/live-project sessions, model downloads/inference,
-  golden updates and all-device runtime validation remain deferred.
+- Flutter 3.50.1 / Dart 3.14 static analysis: no issues.
+- Web release compilation and Wasm compatibility dry run: succeeded.
+- Signed ARM64 Android release APK (~52 MB) and AAB (~51 MB): succeeded. APK signature verified with Android SDK `apksigner`; AAB signature verified with JDK `jarsigner`. LiteRT-LM's native library is present; unsupported-ABI JNI stubs are excluded.
+- Firestore rules syntax validation: passed through Firebase. Static authorization review is recorded in `rules-audit.json`; it is not a substitute for the deferred authorization checks.
+- Auth, Firestore rules/indexes and Remote Config deployments: succeeded. Hosting status is recorded in RELEASE.md.
+- JavaScript/Python syntax checks and `git diff --check`: passed.
+- iOS: current source is published for Mac CI compilation. See RELEASE.md for the final build result and local installation instructions; no physical-device claim is made.
+- Functional flows, model downloads/inference, offline reloads, physical-device validation and updated goldens remain deferred. No prior v0.2 result is evidence that these new flows were exercised.
+
 
 # Verification status — Flutter migration
 
@@ -54,4 +52,4 @@ The canonical application is now `app/`. Results below concern that application 
 
 The retained HTML, Compose and Swift planner checks are historical evidence for the older clients. The rows above record the separate Flutter build and runtime evidence.
 
-Remaining product scope includes live activity/event sourcing, persistent learned accounts, friends/review history, multi-stop planning, retention/deletion controls and production service review. The catalogue remains labelled sample data. Flutter uses consent-based cloud AI; the legacy local-only inference implementation is not part of its runtime.
+At v0.2, local inference, durable accounts, social/history, lifecycle and multi-stop features were not yet implemented. These historical limitations are superseded by the v0.4 status above.

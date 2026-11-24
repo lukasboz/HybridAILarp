@@ -20,7 +20,7 @@ Shortlist explanation requires its own consent. Its payload contains approved ca
 
 ## Shared backend protocol
 
-The migration kept the existing schema and rules. The v0.3 rules add private accounts/devices, activity events, invitation revocation, plan/member lifecycle operations, provenance and bounded itinerary stops. Deploy them before using those paths against production.
+The migration kept the existing schema and rules. The v0.4 rules add private accounts/devices, activity events, invitation revocation, plan/member lifecycle operations, provenance and bounded itinerary stops. The current rules and indexes were deployed in this implementation pass.
 
 - `rooms/{roomId}`: title, date, Toronto city, owner ID, member IDs, status, revision, current proposal, invitation reference, creation timestamp.
 - `rooms/{roomId}/members/{uid}`: bounded display name, approved card, invitation reference and update timestamp.
@@ -43,8 +43,7 @@ Flutter’s native iOS runner requires macOS/Xcode and signing. Linux xtool can 
 `firebase_accounts.dart` links a new email/password account to the existing
 anonymous UID and stores only approved defaults/name in `users/{uid}`. These
 profiles, device installation IDs and server inboxes are owner-readable only;
-room cards remain intentionally shared. Existing-account sign-in cannot silently
-abandon a guest's rooms. Account deletion requires leaving/transferring/deleting
+room cards remain intentionally shared. Existing-account sign-in verifies the destination password in a secondary Auth session. A short-lived target-authorized migration proof allows the original guest to transfer only its own memberships, preserving the destination's existing cards. Each transferred room reopens consent. Account deletion requires leaving/transferring/deleting
 rooms, recent authentication, then purges private collections before Auth deletion.
 
 `firebase_plans.dart` implements lifecycle transactions and room purging. A
@@ -52,7 +51,7 @@ rooms, recent authentication, then purges private collections before Auth deleti
 Activity events contain only allowlisted type, actor UID, revision and timestamp.
 IDs coalesce one event per actor/type/revision. The store watches bounded recent
 events for Updates; optional Cloud Functions send generic FCM notifications with
-per-recipient/room throttling and collapse identifiers.
+per-recipient/room throttling, room-scoped inbox IDs, retryable delivery leases and collapse identifiers.
 
 `discovery_service.dart` bounds and caches public OSM lookups and Transitous
 requests. Imported places retain source URL, retrieval date and actual venue
@@ -62,15 +61,13 @@ locations/modes, not member names or notes. Lookup results never bypass the
 planner. No server API keys are embedded in the client.
 
 `Proposal.stops` optionally stores two/three ordered candidate IDs, start times,
-durations and transfer estimates. All votes still bind to one proposal revision.
+durations and transfer times. All votes still bind to one proposal revision.
 The host rechecks aggregate eligibility and the exact schedule on confirmation.
+
+`social_service.dart` manages explicit friendship capabilities, two-person relationships and plan invitations. `social_store.dart` archives confirmed snapshots privately under `users/{uid}/history`; ratings are owner-only and deleted entries have private tombstones so active confirmed rooms cannot recreate them. Export/deletion includes social and history collections.
+
+`rooms/{id}/routes` contains host-submitted Transitous travel facts keyed by origin/destination, with per-member times, a hash of the approved planning inputs, exact arrival minute and a fifteen-minute expiry. Sourced mode excludes missing, mismatched and expired facts. Refreshing routes changes the revision; estimates require an explicit source switch. Transfer schedules are recalculated until stable, with a bounded number of requests. The provider queue is paced and limited to 100 uncached requests per device per UTC day.
 
 ## Product limits
 
-The region remains Toronto. Prices, hours, access and travel in planning are
-sample or host-provided/estimated; sourced route checks are supplemental. There
-is no booking, friends graph or automatic account merge into an existing login.
-Native local planning and downloaded inference work offline; packaged web loads
-have a versioned shell cache and separate model cache. Background push requires
-an activated optional backend. Security Rules remain a prototype requiring
-review; syntax checks are not evidence of exhaustive authorization coverage.
+The region remains Toronto. Venue costs, hours, quietness and access are sample or host-reviewed facts. External route provenance is transparent but host submissions are not cryptographically authenticated by Security Rules. No booking or payment is performed. Native local planning and downloaded inference work offline; packaged web loads have a versioned shell cache and separate model cache. Background push needs an activated optional backend. Current authorization review is static; no new tests or device runtime checks were performed.

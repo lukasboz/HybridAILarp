@@ -64,9 +64,9 @@ Surviving activities are ordered by:
 4. Lowest cost.
 5. A stable ID tie-breaker.
 
-The fit estimate combines interest overlap, budget headroom and estimated travel convenience. It is not a probability or a prediction of happiness. A detail view makes each person’s fit visible using the room’s shared cards.
+The fit estimate combines interest overlap, budget headroom and travel convenience under the chosen estimated or sourced mode. It is not a probability or a prediction of happiness. A detail view makes each person’s fit visible using the room’s shared cards.
 
-The detail view's map is an illustrative Toronto schematic. Its arcs show neighbourhood-to-activity relationships, and each person's estimated travel appears beside their own limit. It is not a navigation map. Travel is estimated from neighbourhood centres, not precise addresses or live TTC conditions.
+The detail view's map is an illustrative Toronto schematic. Its arcs show neighbourhood-to-activity relationships, and each person's estimated travel appears beside their own limit. It is not a navigation map. The host may choose labelled neighbourhood estimates or explicit Transitous route lookups from those same coarse centres. Fresh, matching group routes drive sourced ranking; unavailable routes cannot qualify. The schematic remains illustrative.
 
 Cloud explanations are optional and require a clear disclosure. The model receives allowlisted cards and eligible candidates, explains aggregate group fit and tradeoffs, and returns only known candidate IDs. It cannot add a venue or bypass the deterministic filter.
 
@@ -84,7 +84,7 @@ There is no automatic reservation, payment, plan email, SMS or contact upload. A
 
 ### Feedback
 
-After a plan, the participant can ask for more like it or something different. That feedback changes only their defaults on the current device. It never rewrites another person’s preferences or adds a private review to cloud history.
+After a plan, the participant can ask for more like it or something different. That feedback changes only their defaults, with private account sync when signed in. Confirmed plans are saved separately in private history, where each person can rate their own experience or delete it. No rating is shared with friends or the room.
 
 ## Hard product requirements
 
@@ -109,4 +109,4 @@ Do not claim a percentage improvement without collecting a baseline. Report the 
 
 ## Scope after the hackathon
 
-The v0.3 implementation adds free place/route lookup, lifecycle flows, account linking, invite revocation, export/deletion, optional push and two/three-stop planning. Next consider a commercial data provider with independently verified prices/access, authoritative route-backed ranking, friends and reviews. Add weather-aware alternatives only with sourced weather data. Push notifications, chat, automatic reservations, contacts access and payments are separate decisions, not necessary dependencies of a good first plan.
+The v0.4 implementation includes local/cloud AI, free place lookup, sourced travel ranking, lifecycle controls, guest linking and existing-account migration, People and direct invitations, private history/ratings, export/deletion, optional push and two/three-stop planning. Commercial provider contracts, independently verified venue facts, weather-aware alternatives, chat, reservations, contacts access and payments require separate product decisions. They are not dependencies of this planning experience.

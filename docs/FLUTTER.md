@@ -58,7 +58,7 @@ bash scripts/test-flutter-firebase.sh
 
 The default target is `emulator-5554`, with host `10.0.2.2`. Override `FLUTTER_TEST_DEVICE` / `FIREBASE_TEST_HOST` for another target. The wrapper starts and stops backend emulators; do not run it over an already-running emulator suite on the same ports. Android debug network policy permits cleartext only to local emulator addresses. The test passed on API 35 and wrote `app/build/integration_response_data.json`. It verifies anonymous identities, invitations, shared cards, host options, forged/stale vote rejection and unanimous confirmation. It does not establish production credentials, App Check attestation or model responses. Rebuild the normal app after testing before distributing an APK.
 
-The migration retained the core room protocol. v0.3 extends it with private profiles/devices/inboxes, bounded activity events, room/member lifecycle operations, optional venue provenance/duration and two/three-stop proposals. The eight-member cap, twelve option slots and revision-bound consensus remain. Run `npm run test:rules` and deploy them with `firebase deploy --only firestore:rules` before relying on server enforcement. The Remote Config template now lists `cloud_fallback_model`, and the client reads `max_group_size` (clamped to 2–8). Neither the rules nor the template has been deployed or published.
+The migration retained the core room protocol. v0.4 extends it with private profiles/devices/inboxes, bounded activity events, room/member lifecycle operations, optional venue provenance/duration and two/three-stop proposals. The eight-member cap, twelve option slots and revision-bound consensus remain. Run `npm run test:rules` and deploy them with `firebase deploy --only firestore:rules` before relying on server enforcement. The Remote Config template now lists `cloud_fallback_model`, and the client reads `max_group_size` (clamped to 2–8). Auth, Firestore rules/indexes and the Remote Config template were deployed during this pass.
 
 An additional native connection test is explicitly gated behind `RUN_FIREBASE_LIVE_TEST=true`. It uses the configured real project and requires `FIREBASE_TEST_DEBUG_TOKEN` from a privately registered App Check token. Supply both through an ignored, permission-restricted Dart define file:
 
@@ -80,15 +80,13 @@ Approved cards, local rooms and feedback defaults use Flutter SharedPreferences 
 
 ## Rollout and remaining product scope
 
-`npm run build` packages Flutter into `dist/`, which the existing Firebase Hosting configuration already targets. The packaged worker versions the app shell and retires older shell caches, while preserving the inference library’s model cache. Hosting deployment remains an explicit later action. Flutter web assets need an initial network load, then the packaged shell is cached for offline use. The local browser engine/model must also have been loaded while online. Native apps bundle their sample catalogue and save local plans offline.
+`npm run build` packages Flutter into `dist/`, which the existing Firebase Hosting configuration already targets. The packaged worker versions the app shell and retires older shell caches, while preserving the inference library’s model cache. See RELEASE.md for the current Hosting deployment and signed Android artifacts. Flutter web assets need an initial network load, then the packaged shell is cached for offline use. The local browser engine/model must also have been loaded while online. Native apps bundle their sample catalogue and save local plans offline.
 
-The legacy `web/` and `native/` sources remain as reference, with `*:legacy` npm commands. They are not parallel supported UI implementations. The bundled sample catalogue stays labelled. v0.3 adds free OSM discovery, accounts and multi-stop flows; friends/reviews remain deferred. See STATUS.md for the current implementation and activation boundary.
+The legacy `web/` and `native/` sources remain as reference, with `*:legacy` npm commands. They are not parallel supported UI implementations. The bundled sample catalogue stays labelled. v0.4 adds free OSM discovery, account merging, sourced route ranking, People, private history/ratings and multi-stop flows. See STATUS.md for the current implementation and activation boundary.
 
-## v0.3 activation and cost boundaries
+## v0.4 activation and cost boundaries
 
-The configured database is the existing Standard `(default)` instance. Enable
-`emailPassword` with `firebase deploy --only auth` and deploy the updated
-`firestore.rules` before exercising new flows. Review the rules and run the
+The configured database is the existing Standard `(default)` instance. Email/password Auth, the current rules/indexes and Remote Config are deployed. Review the rules and run the
 later authorization test pass before broad release. Nothing in a build deploys
 these changes.
 
@@ -105,5 +103,5 @@ native credentials. See `functions/README.md`. Builds generate only public web
 messaging configuration and copy browser storage helpers from the pinned package.
 
 Overpass venue searches cache for 24 hours. Transitous checks are explicit and
-cached for 15 minutes by location/mode/planning minute. These services receive no private notes
+cached for 15 minutes by location/mode/planning minute, with request pacing and a 100-request/device/day limit. These services receive no private notes
 and require no API keys. Source links and community-service attribution are shown.

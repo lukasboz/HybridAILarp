@@ -29,7 +29,7 @@ The [official rules](https://firebasehybridaihackathon.devpost.com/rules) requir
 | --- | --- | --- |
 | 0:00–0:20 | A real planning problem and three different devices | “Three friends, three different limits, one afternoon. Nobody wants another fifty-message planning chat.” |
 | 0:20–0:50 | Supported device: enter a private note; run local extraction; show editable card and receipt | “The explanation stays here. Only the card I approve is shared.” |
-| 0:50–1:15 | Android, iPhone and desktop join the same live room | “Everyone can participate. This iPhone 13 uses the same controls because it doesn’t support Apple’s local model.” |
+| 0:50–1:15 | Android, iPhone and desktop join the same live room | “Everyone can participate. This iPhone uses the downloaded model when supported, with the same manual controls available on every device.” |
 | 1:15–1:45 | Raise/lower one hard limit; show the shortlist change and ruled-out explanation | “A good average doesn’t erase someone’s limit. We look after the least-satisfied person first.” |
 | 1:45–2:05 | Disclosed cloud explanation; show an honest tradeoff | “The cloud sees approved cards and eligible options. It explains the decision; it can’t override the constraints.” |
 | 2:05–2:35 | One person asks to discuss, a new proposal is made, stale votes disappear, all three accept | “No silent yes. A changed plan needs a new agreement.” |
@@ -52,7 +52,7 @@ Use real inference footage. If a recorded clip was captured on different hardwar
 
 - Complete Google/Firebase provisioning and register App Check for every app.
 - Deploy the website and verify an invitation across two independent browsers and both native apps.
-- Install the native Compose Android and SwiftUI xtool iOS packages, then verify their components, live room flows and lifecycle behavior.
+- Install the canonical Flutter Android build and the locally signed Flutter iOS build, then verify their live-room and lifecycle behavior.
 - Borrow compatible hardware and record successful native local inference where claimed.
 - Add real group activities with checked source details for the actual demonstration.
 - Review prototype rules and confirm all emulator tests pass.

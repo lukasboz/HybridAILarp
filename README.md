@@ -6,6 +6,12 @@ MeetHalfway helps a group choose an activity that respects everyone’s budget, 
 
 The canonical application is **[`app/`](app/)**. All three platforms use the same Dart widgets, bundled Inter fonts, icons, photos, controls and planner. Layout changes depend on viewport size, not operating system. Phone navigation becomes a sidebar at 760 logical pixels. Optional downloaded models draft preferences on the device. Cloud preference drafting and shortlist explanations require separate, explicit consent.
 
+Live web app: https://meethalfway-2026-e43ca6.web.app/
+
+Signed Android 11+ / ARM64 APK and AAB: `artifacts/android/`. Firebase App Distribution is used for prerelease uploads; Spark Hosting does not allow APK hosting.
+
+See [release handoff](docs/RELEASE.md) for signed artifacts, deployment and remaining account/access requirements.
+
 ## Run
 
 Use Flutter **3.50.1** (Dart 3.14), Python 3, and Java 21 plus an Android SDK for Android builds. The workspace’s Flutter, Java and Android tools are installed under ignored `.cache/`; the wrapper detects these, or uses Flutter on PATH.
@@ -41,10 +47,10 @@ The web build is packaged in `dist/`, retaining the existing Firebase Hosting ta
 - Separately approved Firebase cloud drafting and shortlist explanations.
 - Free nearby-place lookup through OpenStreetMap/Overpass, with source and
   retrieval details. A host reviews cost, hours, setting and access before import.
-- On-demand sourced transit/walking/cycling routes through Transitous, alongside
-  the planner's clearly labelled travel estimates.
+- On-demand sourced transit/walking/cycling routes through Transitous, with a host-approved mode that uses fresh group routes for ranking and itinerary transfers.
 - Email/password account creation and recovery, guest linking that preserves the
-  UID, private preference sync, data export and account deletion.
+  UID, verified migration into existing accounts, private preference sync, data export and account deletion.
+- Friendship links, saved people, direct plan invitations, private confirmed-plan history and ratings.
 - Live Updates, connectivity notices, and an optional FCM background notification
   backend. The latter requires billing/credentials before activation.
 - Two- or three-stop itinerary proposals with cumulative budget/travel and
@@ -52,14 +58,13 @@ The web build is packaged in `dist/`, retaining the existing Firebase Hosting ta
 - Offline web app-shell caching after the first packaged load; native local plans
   and downloaded models remain available offline.
 - Release-signing configuration, native invitation handling and a generator for
-  verified app-link documents. Publishing requires real signing identities.
+  verified app-link documents. A signed Android APK/AAB and Android verification file are packaged locally.
 
 The bundled twelve Toronto activities remain **sample data**. Place search is
 real OSM data; prices, opening windows, quietness and access are host-reviewed,
-not live commercial availability. Route checks do not silently overwrite the
-planner's estimates. Friends/reviews and automatic bookings remain out of scope.
+not live commercial availability. The host explicitly chooses estimates or fresh sourced travel. Automatic bookings and payments are outside this product.
 
-This is the **v0.3.0 implementation pass**. Tests and physical-device verification
+This is the **v0.4.0 implementation pass**. Tests and physical-device verification
 of these additions are deferred; historical v0.2 results do not validate them.
 See [current status](docs/STATUS.md) and [platform setup](docs/PLATFORMS.md).
 

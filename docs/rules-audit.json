@@ -1,0 +1,18 @@
+{
+  "score": 4,
+  "summary": "Static review of the v0.4 prototype rules: private user data is owner-scoped, joins require current capabilities, guest migration proves both identities, and room changes invalidate consensus. Syntax validation passed. No authorization or emulator tests were added or run in this implementation pass.",
+  "findings": [
+    {
+      "check": "Source trust boundary",
+      "severity": "minor",
+      "issue": "Venue and route facts are host submissions. Schema, membership, freshness and mutation permissions are checked, but the rules cannot authenticate a Transitous response or verify venue claims.",
+      "recommendation": "Keep provenance and host-review wording visible. A future independent verification service needs an authenticated backend and provider agreement."
+    },
+    {
+      "check": "Date semantics",
+      "severity": "minor",
+      "issue": "Rules bound date length and format; calendar validity and past-date restrictions are enforced by the application.",
+      "recommendation": "Continue validating dates in the client. Do not treat a user-supplied date as a security authority."
+    }
+  ]
+}

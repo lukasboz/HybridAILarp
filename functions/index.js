@@ -25,10 +25,13 @@ export const planNotifications = onDocumentCreated({...config, document: 'rooms/
   if (!data.memberIds.includes(change.actorId)) return;
   const members = data.memberIds.filter(uid => uid !== change.actorId);
   for (const uid of members) {
-    const inbox = db.doc(`users/${uid}/inbox/${event.params.eventId}`);
+    const inbox = db.doc(`users/${uid}/inbox/${room.id}_${event.params.eventId}`);
     const acquired = await db.runTransaction(async tx => {
       const old = (await tx.get(inbox)).data();
-      if (old?.sent || (old?.leaseUntil?.toMillis() ?? 0) > Date.now()) return false;
+      if (old?.sent) return false;
+      if ((old?.leaseUntil?.toMillis() ?? 0) > Date.now()) {
+        throw new Error('A delivery lease is active; retry after its owner finishes.');
+      }
       // One notification per person/room/minute bounds spam from active votes.
       const gate = db.doc(`users/${uid}/delivery/${event.params.roomId}`);
       const last = (await tx.get(gate)).data();

@@ -36,6 +36,14 @@ android {
         versionName = flutter.versionName
     }
 
+    // Some SDK AARs carry JNI stubs for other ABIs. Keeping those stubs would
+    // advertise compatibility even though Flutter and LiteRT-LM are ARM64-only.
+    packaging {
+        jniLibs {
+            excludes += listOf("lib/armeabi-v7a/**", "lib/x86/**", "lib/x86_64/**")
+        }
+    }
+
     signingConfigs {
         if (releaseKeyFile.exists()) {
             create("distribution") {
